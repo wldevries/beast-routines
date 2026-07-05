@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Abrahangs Timer — Beastmaker 1000</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page">
+
+  <header class="header">
+    <div class="brand">
+      <div class="brand-name">ABRA·HANGS</div>
+      <div class="brand-sub">Beastmaker 1000 · 10 min × 2/day</div>
+    </div>
+    <div class="header-actions">
+      <span class="pill-static">6h+ between sessions</span>
+      <button id="soundBtn" class="pill-btn" type="button">Sound on</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="timer-section">
+      <div class="ring-wrap">
+        <div class="ring-glow" id="ringGlow"></div>
+        <div class="ring" id="ring">
+          <div class="ring-inner">
+            <div class="phase-label" id="phaseLabel"></div>
+            <div class="display-text" id="displayText"></div>
+            <div class="unit-text" id="unitText"></div>
+            <div class="sublabel" id="sublabel"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pips" id="pips"></div>
+
+      <div class="controls">
+        <button id="primaryBtn" class="btn-primary" type="button">Start</button>
+        <button id="skipBtn" class="btn-secondary" type="button">Skip &rsaquo;</button>
+        <button id="resetBtn" class="btn-ghost" type="button">Reset</button>
+      </div>
+      <div class="keys-hint">Space = start / pause&nbsp;&nbsp;&middot;&nbsp;&nbsp;&rarr; = skip&nbsp;&nbsp;&middot;&nbsp;&nbsp;R = reset</div>
+    </section>
+
+    <section class="info-section">
+      <div id="gripCard"></div>
+
+      <div class="board-card">
+        <div class="board-card-header">
+          <div class="board-map-title">Board map &middot; 1000 series</div>
+          <button id="editBtn" class="pill-btn" type="button">Edit holds</button>
+        </div>
+
+        <div class="board-wrap">
+          <svg id="boardSvg" viewBox="0 0 210 62"></svg>
+          <div class="tooltip" id="tooltip" hidden></div>
+        </div>
+
+        <div id="editPanel"></div>
+        <div id="notEditingHint" class="hint-footer">Lit holds = current grip &middot; numbers are edge depth (mm)</div>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
