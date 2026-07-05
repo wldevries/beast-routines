@@ -26,8 +26,8 @@ const BOARD = (() => {
 const TOP_PROFILE = {
   boardOutline: "m -32.962129,82.490377 c -28.39943,0 -51.262498,22.863063 -51.262498,51.262503 0,28.39943 22.863068,51.2625 51.262498,51.2625 H 268.2956 c 28.39944,0 51.26251,-22.86307 51.26251,-51.2625 0,-28.39944 -22.86307,-51.262503 -51.26251,-51.262503 h -22.83256 c -1.8191,0.185035 -4.59553,0.533287 -5.45608,1.167124 -1.47731,1.088106 -1.19744,3.410012 -1.1463,5.242371 0.0446,1.597596 -0.0847,2.823052 -1.70407,2.534166 -3.47669,-0.62022 -7.67747,-2.225309 -14.73202,-6.467698 -2.20388,-1.325342 -5.16578,-2.070214 -8.14881,-2.475963 H 21.057714 c -2.982958,0.405754 -5.944462,1.15065 -8.148291,2.475963 -7.0545549,4.242389 -11.2553248,5.847473 -14.7320301,6.467698 -3.4767057,0.620223 -1.2063773,-5.739734 -3.9717075,-7.776537 -0.8605524,-0.633841 -2.5156311,-0.982089 -4.3347324,-1.167124 z",
   slopers: [
-    { id: 'slopeL', label: '35° Sloper', d: "m 45.79925,9.1778459 c 0,0 0.001,5.4421401 2e-6,8.0981001 -2.62e-4,0.674008 0.135911,1.0226 0.809809,1.034757 6.539942,0.117977 23.848094,0.04497 31.807535,-0.04499 0.491889,-0.0056 0.762839,-0.587829 0.76482,-1.079746 0.01519,-3.772131 10e-7,-11.3373397 10e-7,-11.3373397" },
-    { id: 'slopeR', label: '35° Sloper', d: "m 129.56959,5.6686695 c 0,0 -0.23799,8.0077145 -0.17996,11.6972555 0.008,0.483562 0.55114,0.990386 1.03476,0.989767 6.63281,-0.0085 24.75704,0.0018 31.65773,0.07159 0.36878,0.0037 0.81937,-0.372566 0.82465,-0.746435 0.0385,-2.724645 0.09,-8.907909 0.09,-8.907909" },
+    { id: 'slopeL', label: '35° Sloper', d: "m 45.79925,9.1778459 c 0,0 0.001,5.4421401 2e-6,8.0981001 -2.62e-4,0.674008 0.135911,1.0226 0.809809,1.034757 6.539942,0.117977 23.848094,0.04497 31.807535,-0.04499 0.491889,-0.0056 0.762839,-0.587829 0.76482,-1.079746 0.01519,-3.772131 10e-7,-11.3373397 10e-7,-11.3373397 L 79.181417,-10 L 45.79925,-10 Z" },
+    { id: 'slopeR', label: '35° Sloper', d: "m 129.56959,5.6686695 c 0,0 -0.23799,8.0077145 -0.17996,11.6972555 0.008,0.483562 0.55114,0.990386 1.03476,0.989767 6.63281,-0.0085 24.75704,0.0018 31.65773,0.07159 0.36878,0.0037 0.81937,-0.372566 0.82465,-0.746435 0.0385,-2.724645 0.09,-8.907909 0.09,-8.907909 L 162.99677,-10 L 129.56959,-10 Z" },
   ],
   jugs: [
     { id: 'jugL', label: 'Jug', d: "M 32.09,5.66 L 31.29,5.68 30.49,5.72 29.69,5.78 28.89,5.87 28.1,5.98 27.31,6.12 26.52,6.29 25.75,6.48 24.97,6.7 24.21,6.94 23.45,7.21 22.7,7.5 21.97,7.82 21.24,8.16 20.52,8.52 19.82,8.91 19.13,9.32 18.46,9.75 17.79,10.2 17.15,10.68 16.52,11.17 15.9,11.69 15.3,12.23 14.72,12.78 15.03,12.6 45.71,12.6 45.8,9.18 46.41,9.83 46.03,8.78 45.88,7.65 45.51,6.58 44.59,5.95 43.48,5.71 42.34,5.66 41.2,5.66 40.06,5.66 38.92,5.66 37.78,5.66 36.65,5.66 35.51,5.66 34.37,5.66 33.23,5.66 32.09,5.66 Z" },
@@ -40,8 +40,8 @@ const TOP_PROFILE = {
     "m 162.86178,12.597044 h 31.13269",
   ],
   labels: [
-    { x: 26.6, y: 9, text: 'jug' }, { x: 62.5, y: 12.4, text: '35°' }, { x: 104.3, y: 9, text: '20°' },
-    { x: 146.2, y: 12.4, text: '35°' }, { x: 182.4, y: 9, text: 'jug' },
+    { x: 28.5, y: 9.8, text: 'jug' }, { x: 62.5, y: 12.4, text: '35°' }, { x: 104.3, y: 9.8, text: '20°' },
+    { x: 146.2, y: 12.4, text: '35°' }, { x: 180.5, y: 9.8, text: 'jug' },
   ],
 };
 
@@ -52,6 +52,8 @@ const ZONE_META = {
   jugR: { x: 182.4, y: 5.67, label: 'Jug', sub: 'Deep jug, mainly for pull-ups / mounting — not used for this routine' },
   center: { x: 104.3, y: 5.7, label: '20° Sloper', sub: 'Full-width sloper rail — not used for this routine' },
 };
+
+const ZONE_IDS = [...TOP_PROFILE.slopers, ...TOP_PROFILE.jugs, TOP_PROFILE.center].map(z => z.id);
 
 // ---- grip hold groups (which board holds each named grip lights up) ----
 const DEFAULT_ASSIGN = {
@@ -174,8 +176,13 @@ class AbrahangsTimer {
   }
   buildRepeatersProtocol() {
     const cfg = this.state.repeatersSetup;
-    const holdDescs = cfg.holdIds.map(id => BOARD.find(b => b.id === id)).filter(Boolean);
-    const uniqueDescs = [...new Set(holdDescs.map(h => `${h.label}mm ${h.desc.split(' · ')[0].toLowerCase()}`))];
+    const descs = cfg.holdIds.map(id => {
+      const h = BOARD.find(b => b.id === id);
+      if (h) return `${h.label}mm ${h.desc.split(' · ')[0].toLowerCase()}`;
+      const z = ZONE_META[id];
+      return z ? z.label.toLowerCase() : null;
+    }).filter(Boolean);
+    const uniqueDescs = [...new Set(descs)];
     const target = uniqueDescs.length ? uniqueDescs.join(' + ') : 'Selected edge';
     return {
       ...REPEATERS_TEMPLATE,
@@ -239,7 +246,9 @@ class AbrahangsTimer {
 
     this.setupBoardSvg.addEventListener('click', (e) => {
       const holdEl = e.target.closest('[data-hold-id]');
-      if (holdEl) this.toggleSetupHold(holdEl.dataset.holdId);
+      if (holdEl) { this.toggleSetupHold(holdEl.dataset.holdId); return; }
+      const zoneEl = e.target.closest('[data-zone-id]');
+      if (zoneEl) this.toggleSetupHold(zoneEl.dataset.zoneId);
     });
     this.setupPresetsEl.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-preset-index]');
@@ -287,7 +296,7 @@ class AbrahangsTimer {
   loadRepeatersSetup() {
     let saved = null;
     try { const r = localStorage.getItem(REPEATERS_SETUP_STORAGE_KEY); if (r) saved = JSON.parse(r); } catch (e) {}
-    const valid = new Set(BOARD.map(h => h.id));
+    const valid = new Set([...BOARD.map(h => h.id), ...ZONE_IDS]);
     const holdIds = (saved && Array.isArray(saved.holdIds)) ? saved.holdIds.filter(id => valid.has(id)) : null;
     this.state.repeatersSetup = {
       holdIds: (holdIds && holdIds.length) ? holdIds : [...DEFAULT_REPEATERS_SETUP.holdIds],
@@ -641,7 +650,9 @@ class AbrahangsTimer {
     }).join('');
 
     const zoneFill = (id, base, hoverColor) => {
+      const on = highlightIds.includes(id);
       const hovered = this.state.hoverZone === id;
+      if (on) return { fill: highlightColor, stroke: '#15110d', sw: 0.5 };
       return {
         fill: hovered ? hoverColor : base,
         stroke: hovered ? '#15110d' : 'rgba(0,0,0,0.22)',
@@ -651,22 +662,27 @@ class AbrahangsTimer {
 
     const slopersMarkup = TOP_PROFILE.slopers.map(s => {
       const zf = zoneFill(s.id, '#ceb887', '#dcc79c');
-      return `<path data-zone-id="${s.id}" d="${s.d}" fill="${zf.fill}" stroke="${zf.stroke}" stroke-width="${zf.sw}"></path>`;
+      return `<path data-zone-id="${s.id}" d="${s.d}" fill="${zf.fill}" stroke="${zf.stroke}" stroke-width="${zf.sw}" clip-path="url(#boardOutlineClip)"></path>`;
     }).join('');
 
     const jugsMarkup = TOP_PROFILE.jugs.map(j => {
       const zf = zoneFill(j.id, '#c3a575', '#d3b689');
-      return `<path data-zone-id="${j.id}" d="${j.d}" fill="${zf.fill}" stroke="${zf.stroke}" stroke-width="${zf.sw}"></path>`;
+      return `<path data-zone-id="${j.id}" d="${j.d}" fill="${zf.fill}" stroke="${zf.stroke}" stroke-width="${zf.sw}" clip-path="url(#boardOutlineClip)"></path>`;
     }).join('');
 
     const centerZf = zoneFill('center', '#d9c194', '#e6d3a8');
-    const centerMarkup = `<path data-zone-id="center" d="${TOP_PROFILE.center.d}" fill="${centerZf.fill}" stroke="${centerZf.stroke}" stroke-width="${centerZf.sw}"></path>`;
+    const centerMarkup = `<path data-zone-id="center" d="${TOP_PROFILE.center.d}" fill="${centerZf.fill}" stroke="${centerZf.stroke}" stroke-width="${centerZf.sw}" clip-path="url(#boardOutlineClip)"></path>`;
 
     const groovesMarkup = TOP_PROFILE.grooves.map(d => `<path d="${d}" fill="none" stroke="rgba(0,0,0,0.22)" stroke-width="0.35" style="pointer-events:none;"></path>`).join('');
 
     const labelsMarkup = TOP_PROFILE.labels.map(lb => `<text x="${lb.x}" y="${lb.y}" text-anchor="middle" font-family="Archivo, sans-serif" font-size="2.9" font-weight="700" fill="#6b5a44" style="pointer-events:none;">${lb.text}</text>`).join('');
 
     return `
+      <defs>
+        <clipPath id="boardOutlineClip">
+          <path d="${TOP_PROFILE.boardOutline}" transform="matrix(0.48144766,0,0,0.48148624,47.963938,-34.0533)"></path>
+        </clipPath>
+      </defs>
       <g transform="matrix(0.48144766,0,0,0.48148624,47.963938,-34.0533)">
         <path d="${TOP_PROFILE.boardOutline}" fill="#d8c39c" stroke="rgba(0,0,0,0.16)" stroke-width="0.4"></path>
       </g>
@@ -727,7 +743,10 @@ class AbrahangsTimer {
     } else if (hoverZone) {
       const zm = ZONE_META[hoverZone];
       if (zm) {
-        tooltip = { left: (zm.x / 210 * 100) + '%', top: (zm.y / 62 * 100) + '%', title: zm.label, sub: zm.sub };
+        const g = P.sets[Math.min(setIndex, P.sets.length - 1)];
+        const usedBy = Array.isArray(g.holds) && g.holds.includes(hoverZone) ? [g.name] : [];
+        const sub = usedBy.length ? `Used in ${usedBy.join(', ')}` : zm.sub;
+        tooltip = { left: (zm.x / 210 * 100) + '%', top: (zm.y / 62 * 100) + '%', title: zm.label, sub };
       }
     }
     if (tooltip) {

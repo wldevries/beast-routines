@@ -74,7 +74,7 @@ button { font-family: 'Archivo', sans-serif; cursor: pointer; }
 .setup-board-card { background: #1c160f; border: 1px solid rgba(255,255,255,0.07); border-radius: 18px; padding: 20px 22px; }
 .setup-board-hint { font-size: 12.5px; color: #8a7c6c; margin-bottom: 12px; text-align: center; }
 #setupBoardSvg { width: 100%; height: auto; display: block; }
-#setupBoardSvg [data-hold-id] { cursor: pointer; }
+#setupBoardSvg [data-hold-id], #setupBoardSvg [data-zone-id] { cursor: pointer; }
 
 .setup-presets { display: flex; gap: 8px; flex-wrap: wrap; }
 .preset-pill {
