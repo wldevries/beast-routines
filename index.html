@@ -18,17 +18,42 @@
       <div class="brand-sub" id="brandSub"></div>
     </div>
     <div class="header-actions">
+      <button id="backBtn" class="pill-btn back-btn" type="button" hidden>&lsaquo; Modes</button>
       <span class="pill-static" id="sessionPill"></span>
       <button id="soundBtn" class="pill-btn" type="button">Sound on</button>
     </div>
   </header>
 
-  <nav class="mode-tabs" id="modeTabs">
-    <button class="mode-tab" data-mode="abrahangs" type="button">Abrahangs</button>
-    <button class="mode-tab" data-mode="repeaters" type="button">Repeaters</button>
-  </nav>
+  <section class="home-screen" id="homeScreen">
+    <div class="mode-cards">
+      <button class="mode-card mode-card-abrahangs" data-mode="abrahangs" type="button">
+        <div class="mode-card-title">Abrahangs</div>
+        <div class="mode-card-sub">Beastmaker 1000 &middot; 10 min &times; 2/day &middot; low intensity</div>
+      </button>
+      <button class="mode-card mode-card-repeaters" data-mode="repeaters" type="button">
+        <div class="mode-card-title">Repeaters</div>
+        <div class="mode-card-sub">Beastmaker 1000 &middot; near-max effort &middot; configurable</div>
+      </button>
+    </div>
+  </section>
 
-  <main class="main">
+  <section class="setup-screen" id="setupScreen" hidden>
+    <h2 class="setup-title">Repeaters Setup</h2>
+
+    <div class="setup-board-card">
+      <div class="setup-board-hint">Tap the hold(s) you'll use for this session</div>
+      <div class="board-wrap">
+        <svg id="setupBoardSvg" viewBox="0 0 210 62"></svg>
+      </div>
+    </div>
+
+    <div class="setup-presets" id="setupPresets"></div>
+    <div class="setup-fields" id="setupFields"></div>
+
+    <button id="setupStartBtn" class="btn-primary setup-start-btn" type="button">Start Session</button>
+  </section>
+
+  <main class="main" id="timerScreen" hidden>
     <section class="timer-section">
       <div class="ring-wrap">
         <div class="ring-glow" id="ringGlow"></div>

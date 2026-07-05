@@ -59,7 +59,6 @@ const DEFAULT_ASSIGN = {
   deepJug: ['r1_1', 'r1_2'],
   topPocket: ['r2_1', 'r2_5'],
   smallEdge: ['r1_0', 'r1_3'],
-  repEdge: ['r3_0', 'r3_5'],
 };
 
 const GROUP_META = [
@@ -67,11 +66,10 @@ const GROUP_META = [
   { key: 'deepJug', label: '3F Open Drag', color: '#5fb36b' },
   { key: 'topPocket', label: '2F Pocket', color: '#5b90c7' },
   { key: 'smallEdge', label: '2F Small Crimp', color: '#d98a5b' },
-  { key: 'repEdge', label: '4F Half-Crimp (20mm)', color: '#c75b5b' },
 ];
 
 const HOLDS_STORAGE_KEY = 'abrahangs_holds_v2';
-const MODE_STORAGE_KEY = 'abrahangs_mode_v1';
+const REPEATERS_SETUP_STORAGE_KEY = 'abrahangs_repeaters_setup_v1';
 
 // ---- protocols ----
 const ABRAHANGS_SETS = (() => {
@@ -84,13 +82,29 @@ const ABRAHANGS_SETS = (() => {
   return [crimp, crimp, crimp, drag, drag, drag, midPocket, frontPocket, midCrimp, frontCrimp];
 })();
 
-const REPEATERS_GRIP = {
+const REPEATERS_GRIP_TEXT = {
   name: '4-Finger Half-Crimp',
-  target: '20 mm edge · row 3',
   intensity: 'Near-max effort (RPE 8–9)',
   cue: 'Full bodyweight through a straight arm. Load hard through the last third of each rep — by rep 5–6 this should feel genuinely hard.',
-  holds: 'repEdge',
 };
+
+const DEFAULT_REPEATERS_SETUP = {
+  holdIds: ['r3_0', 'r3_5'], hangSeconds: 7, repRestSeconds: 3, repsPerSet: 6, setsCount: 6, setRestSeconds: 180,
+};
+
+const REPEATERS_PRESETS = [
+  { label: 'Classic · 7:3 × 6', hangSeconds: 7, repRestSeconds: 3, repsPerSet: 6, setsCount: 6, setRestSeconds: 180 },
+  { label: 'Long hang · 10:5 × 5', hangSeconds: 10, repRestSeconds: 5, repsPerSet: 5, setsCount: 5, setRestSeconds: 180 },
+  { label: 'High volume · 5:5 × 8', hangSeconds: 5, repRestSeconds: 5, repsPerSet: 8, setsCount: 5, setRestSeconds: 150 },
+];
+
+const SETUP_FIELDS = [
+  { key: 'hangSeconds', label: 'Hang', min: 3, max: 20, step: 1, suffix: 's' },
+  { key: 'repRestSeconds', label: 'Rest between reps', min: 1, max: 15, step: 1, suffix: 's' },
+  { key: 'repsPerSet', label: 'Reps per set', min: 2, max: 12, step: 1, suffix: '' },
+  { key: 'setsCount', label: 'Sets', min: 1, max: 10, step: 1, suffix: '' },
+  { key: 'setRestSeconds', label: 'Rest between sets', min: 60, max: 300, step: 15, suffix: '', formatDuration: true },
+];
 
 const PROTOCOLS = {
   abrahangs: {
@@ -110,22 +124,19 @@ const PROTOCOLS = {
       restLong: 'Shake out · breathe',
     },
   },
-  repeaters: {
-    key: 'repeaters', label: 'Repeaters',
-    tagline: 'Beastmaker 1000 · 7:3 × 6 · near-max',
-    sessionNote: '48h+ between sessions',
-    prepareSeconds: 5, hangSeconds: 7, repRestSeconds: 3, setRestSeconds: 180, repsPerSet: 6,
-    sets: Array.from({ length: 6 }, () => REPEATERS_GRIP),
-    footNote: { tag: 'Full hang', text: 'Both feet off the ground, straight arm — this is a real hang at real intensity, not a submax load.' },
-    doneTitle: '6 sets done.',
-    doneBody: "That's 6 sets of 7:3 repeaters in the books. Rest at least <strong>48 hours</strong> before your next finger session — repeaters load the tendons harder than Abrahangs, so recovery matters more here.",
-    idlePreview: '6', idleUnit: 'sets',
-    labels: {
-      prepare: 'First rep coming up',
-      hang: 'Hold near-max effort',
-      restShort: 'Shake out · stay loose',
-      restLong: 'Long rest · shake out fully',
-    },
+};
+
+const REPEATERS_TEMPLATE = {
+  key: 'repeaters', label: 'Repeaters',
+  sessionNote: '48h+ between sessions',
+  prepareSeconds: 5,
+  footNote: { tag: 'Full hang', text: 'Both feet off the ground, straight arm — this is a real hang at real intensity, not a submax load.' },
+  idleUnit: 'sets',
+  labels: {
+    prepare: 'First rep coming up',
+    hang: 'Hold near-max effort',
+    restShort: 'Shake out · stay loose',
+    restLong: 'Long rest · shake out fully',
   },
 };
 
@@ -139,13 +150,12 @@ function formatSeconds(sec) {
 
 class AbrahangsTimer {
   constructor() {
-    const protocolKey = this.loadMode();
-    const P = PROTOCOLS[protocolKey];
+    const P = PROTOCOLS.abrahangs;
     this.state = {
-      protocolKey, status: 'idle', phase: 'prepare', setIndex: 0, repIndex: 0, isLongRest: false,
+      screen: 'home', protocolKey: 'abrahangs', status: 'idle', phase: 'prepare', setIndex: 0, repIndex: 0, isLongRest: false,
       remaining: P.prepareSeconds, phaseTotal: P.prepareSeconds,
       soundOn: true, editHolds: false, editGroup: this.groupsForProtocol(P)[0].key,
-      assignments: null, hoverHold: null, hoverZone: null,
+      assignments: null, hoverHold: null, hoverZone: null, repeatersSetup: null,
     };
     this.timer = null;
     this.actx = null;
@@ -153,11 +163,31 @@ class AbrahangsTimer {
 
     this.queryDom();
     this.loadAssignments();
+    this.loadRepeatersSetup();
     this.bindEvents();
     this.render();
   }
 
-  protocol() { return PROTOCOLS[this.state.protocolKey]; }
+  protocol() {
+    if (this.state.protocolKey === 'repeaters') return this.buildRepeatersProtocol();
+    return PROTOCOLS[this.state.protocolKey];
+  }
+  buildRepeatersProtocol() {
+    const cfg = this.state.repeatersSetup;
+    const holdDescs = cfg.holdIds.map(id => BOARD.find(b => b.id === id)).filter(Boolean);
+    const uniqueDescs = [...new Set(holdDescs.map(h => `${h.label}mm ${h.desc.split(' · ')[0].toLowerCase()}`))];
+    const target = uniqueDescs.length ? uniqueDescs.join(' + ') : 'Selected edge';
+    return {
+      ...REPEATERS_TEMPLATE,
+      tagline: `Beastmaker 1000 · ${cfg.hangSeconds}:${cfg.repRestSeconds} × ${cfg.setsCount} · near-max`,
+      hangSeconds: cfg.hangSeconds, repRestSeconds: cfg.repRestSeconds,
+      setRestSeconds: cfg.setRestSeconds, repsPerSet: cfg.repsPerSet,
+      sets: Array.from({ length: cfg.setsCount }, () => ({ ...REPEATERS_GRIP_TEXT, target, holds: cfg.holdIds })),
+      doneTitle: `${cfg.setsCount} sets done.`,
+      doneBody: `That's ${cfg.setsCount} sets of ${cfg.hangSeconds}:${cfg.repRestSeconds} repeaters in the books. Rest at least <strong>48 hours</strong> before your next finger session — repeaters load the tendons harder than Abrahangs, so recovery matters more here.`,
+      idlePreview: String(cfg.setsCount),
+    };
+  }
   groupsForProtocol(P) {
     const keys = [...new Set(P.sets.map(s => s.holds))];
     return GROUP_META.filter(m => keys.includes(m.key));
@@ -166,7 +196,14 @@ class AbrahangsTimer {
   queryDom() {
     this.brandSub = document.getElementById('brandSub');
     this.sessionPill = document.getElementById('sessionPill');
-    this.modeTabsEl = document.getElementById('modeTabs');
+    this.backBtn = document.getElementById('backBtn');
+    this.homeScreenEl = document.getElementById('homeScreen');
+    this.setupScreenEl = document.getElementById('setupScreen');
+    this.timerScreenEl = document.getElementById('timerScreen');
+    this.setupBoardSvg = document.getElementById('setupBoardSvg');
+    this.setupPresetsEl = document.getElementById('setupPresets');
+    this.setupFieldsEl = document.getElementById('setupFields');
+    this.setupStartBtn = document.getElementById('setupStartBtn');
     this.soundBtn = document.getElementById('soundBtn');
     this.primaryBtn = document.getElementById('primaryBtn');
     this.skipBtn = document.getElementById('skipBtn');
@@ -193,10 +230,26 @@ class AbrahangsTimer {
     this.resetBtn.addEventListener('click', () => this.reset());
     this.editBtn.addEventListener('click', () => this.toggleEdit());
 
-    this.modeTabsEl.addEventListener('click', (e) => {
+    this.backBtn.addEventListener('click', () => this.goHome());
+
+    this.homeScreenEl.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-mode]');
-      if (btn) this.setProtocol(btn.dataset.mode);
+      if (btn) this.selectMode(btn.dataset.mode);
     });
+
+    this.setupBoardSvg.addEventListener('click', (e) => {
+      const holdEl = e.target.closest('[data-hold-id]');
+      if (holdEl) this.toggleSetupHold(holdEl.dataset.holdId);
+    });
+    this.setupPresetsEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-preset-index]');
+      if (btn) this.applyPreset(Number(btn.dataset.presetIndex));
+    });
+    this.setupFieldsEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-field]');
+      if (btn) this.adjustSetupField(btn.dataset.field, Number(btn.dataset.delta));
+    });
+    this.setupStartBtn.addEventListener('click', () => this.startFromSetup());
 
     this.pipsEl.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-pip-index]');
@@ -231,14 +284,21 @@ class AbrahangsTimer {
   }
 
   // ---- persistence ----
-  loadMode() {
-    try {
-      const m = localStorage.getItem(MODE_STORAGE_KEY);
-      if (m && PROTOCOLS[m]) return m;
-    } catch (e) {}
-    return 'abrahangs';
+  loadRepeatersSetup() {
+    let saved = null;
+    try { const r = localStorage.getItem(REPEATERS_SETUP_STORAGE_KEY); if (r) saved = JSON.parse(r); } catch (e) {}
+    const valid = new Set(BOARD.map(h => h.id));
+    const holdIds = (saved && Array.isArray(saved.holdIds)) ? saved.holdIds.filter(id => valid.has(id)) : null;
+    this.state.repeatersSetup = {
+      holdIds: (holdIds && holdIds.length) ? holdIds : [...DEFAULT_REPEATERS_SETUP.holdIds],
+      hangSeconds: Number(saved && saved.hangSeconds) || DEFAULT_REPEATERS_SETUP.hangSeconds,
+      repRestSeconds: Number(saved && saved.repRestSeconds) || DEFAULT_REPEATERS_SETUP.repRestSeconds,
+      repsPerSet: Number(saved && saved.repsPerSet) || DEFAULT_REPEATERS_SETUP.repsPerSet,
+      setsCount: Number(saved && saved.setsCount) || DEFAULT_REPEATERS_SETUP.setsCount,
+      setRestSeconds: Number(saved && saved.setRestSeconds) || DEFAULT_REPEATERS_SETUP.setRestSeconds,
+    };
   }
-  persistMode(key) { try { localStorage.setItem(MODE_STORAGE_KEY, key); } catch (e) {} }
+  persistRepeatersSetup(cfg) { try { localStorage.setItem(REPEATERS_SETUP_STORAGE_KEY, JSON.stringify(cfg)); } catch (e) {} }
 
   loadAssignments() {
     let saved = null;
@@ -377,16 +437,29 @@ class AbrahangsTimer {
   }
   toggleSound() { this.ensureAudio(); this.setState(s => ({ soundOn: !s.soundOn })); }
 
-  setProtocol(key) {
-    if (!PROTOCOLS[key] || this.state.protocolKey === key) return;
+  // ---- screen navigation ----
+  goHome() {
     this.stop();
-    const P = PROTOCOLS[key];
-    this.setState({
-      protocolKey: key, status: 'idle', phase: 'prepare', setIndex: 0, repIndex: 0, isLongRest: false,
-      remaining: P.prepareSeconds, phaseTotal: P.prepareSeconds,
-      editHolds: false, editGroup: this.groupsForProtocol(P)[0].key,
-    });
-    this.persistMode(key);
+    this.setState({ screen: 'home', status: 'idle' });
+  }
+  selectMode(key) {
+    this.stop();
+    if (key === 'abrahangs') {
+      const P = PROTOCOLS.abrahangs;
+      this.setState({
+        protocolKey: 'abrahangs', screen: 'timer', status: 'idle', phase: 'prepare', setIndex: 0, repIndex: 0, isLongRest: false,
+        remaining: P.prepareSeconds, phaseTotal: P.prepareSeconds,
+        editHolds: false, editGroup: this.groupsForProtocol(P)[0].key,
+      });
+    } else if (key === 'repeaters') {
+      this.setState({ protocolKey: 'repeaters', screen: 'setup', editHolds: false });
+    }
+  }
+  startFromSetup() {
+    if (!this.state.repeatersSetup.holdIds.length) return;
+    this.persistRepeatersSetup(this.state.repeatersSetup);
+    this.setState({ screen: 'timer', editHolds: false });
+    this.startRoutine();
   }
 
   // ---- board editing ----
@@ -412,6 +485,35 @@ class AbrahangsTimer {
   enterZone(id) { if (this.state.hoverZone === id) return; this.setState({ hoverZone: id, hoverHold: null }); }
   leaveZone() { if (this.state.hoverZone === null) return; this.setState({ hoverZone: null }); }
 
+  // ---- repeaters setup ----
+  toggleSetupHold(id) {
+    const cur = this.state.repeatersSetup.holdIds;
+    const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+    const repeatersSetup = { ...this.state.repeatersSetup, holdIds: next };
+    this.setState({ repeatersSetup });
+    this.persistRepeatersSetup(repeatersSetup);
+  }
+  adjustSetupField(key, delta) {
+    const field = SETUP_FIELDS.find(f => f.key === key);
+    if (!field) return;
+    const next = Math.min(field.max, Math.max(field.min, this.state.repeatersSetup[key] + delta));
+    if (next === this.state.repeatersSetup[key]) return;
+    const repeatersSetup = { ...this.state.repeatersSetup, [key]: next };
+    this.setState({ repeatersSetup });
+    this.persistRepeatersSetup(repeatersSetup);
+  }
+  applyPreset(index) {
+    const preset = REPEATERS_PRESETS[index];
+    if (!preset) return;
+    const repeatersSetup = {
+      ...this.state.repeatersSetup,
+      hangSeconds: preset.hangSeconds, repRestSeconds: preset.repRestSeconds,
+      repsPerSet: preset.repsPerSet, setsCount: preset.setsCount, setRestSeconds: preset.setRestSeconds,
+    };
+    this.setState({ repeatersSetup });
+    this.persistRepeatersSetup(repeatersSetup);
+  }
+
   // ---- rendering ----
   computeCountdown() {
     const { status, remaining, phaseTotal } = this.state;
@@ -436,11 +538,27 @@ class AbrahangsTimer {
     this.ring.style.background = `conic-gradient(${accent} ${deg}deg, rgba(255,255,255,0.06) ${deg}deg)`;
   }
 
-  renderModeTabs() {
-    const active = this.state.protocolKey;
-    this.modeTabsEl.querySelectorAll('[data-mode]').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.mode === active);
-    });
+  renderSetupPresets() {
+    this.setupPresetsEl.innerHTML = REPEATERS_PRESETS.map((preset, i) =>
+      `<button type="button" class="preset-pill" data-preset-index="${i}">${preset.label}</button>`
+    ).join('');
+  }
+
+  renderSetupFields() {
+    const cfg = this.state.repeatersSetup;
+    this.setupFieldsEl.innerHTML = SETUP_FIELDS.map(f => {
+      const val = cfg[f.key];
+      const display = f.formatDuration ? formatSeconds(val) : `${val}${f.suffix}`;
+      return `
+        <div class="stepper-row">
+          <div class="stepper-label">${f.label}</div>
+          <div class="stepper-controls">
+            <button type="button" class="stepper-btn" data-field="${f.key}" data-delta="${-f.step}">&minus;</button>
+            <div class="stepper-value">${display}</div>
+            <button type="button" class="stepper-btn" data-field="${f.key}" data-delta="${f.step}">&plus;</button>
+          </div>
+        </div>`;
+    }).join('');
   }
 
   repProgress() {
@@ -509,31 +627,13 @@ class AbrahangsTimer {
       </div>`;
   }
 
-  renderBoard() {
-    const { status, editHolds, editGroup, setIndex } = this.state;
-    const P = this.protocol();
-    const accent = this.getAccent();
-    const assign = this.state.assignments || DEFAULT_ASSIGN;
-    const g = P.sets[Math.min(setIndex, P.sets.length - 1)];
-    const activeIds = status === 'done' ? [] : (assign[g.holds] || []);
-    const editColor = (GROUP_META.find(m => m.key === editGroup) || {}).color || '#e2a33e';
-    const editIds = assign[editGroup] || [];
-
+  buildBoardMarkup(highlightIds, highlightColor) {
     const holdsMarkup = BOARD.map(h => {
-      let fill, stroke, sw, labelColor;
-      if (editHolds) {
-        const on = editIds.includes(h.id);
-        fill = on ? editColor : '#c2a87d';
-        stroke = on ? '#1a140e' : 'rgba(0,0,0,0.22)';
-        sw = on ? 0.42 : 0.26;
-        labelColor = on ? '#1a140e' : '#7a6a52';
-      } else {
-        const on = activeIds.includes(h.id);
-        fill = on ? accent : '#c2a87d';
-        stroke = on ? '#15110d' : 'rgba(0,0,0,0.22)';
-        sw = on ? 0.55 : 0.26;
-        labelColor = on ? '#15110d' : '#7a6a52';
-      }
+      const on = highlightIds.includes(h.id);
+      const fill = on ? highlightColor : '#c2a87d';
+      const stroke = on ? '#15110d' : 'rgba(0,0,0,0.22)';
+      const sw = on ? 0.5 : 0.26;
+      const labelColor = on ? '#15110d' : '#7a6a52';
       return `<g data-hold-id="${h.id}">
         <rect x="${h.x}" y="${h.y}" width="${h.w}" height="${h.h}" rx="${h.r}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"></rect>
         <text x="${h.cx}" y="${h.ty}" text-anchor="middle" font-family="Archivo, sans-serif" font-size="3.1" font-weight="700" fill="${labelColor}" style="pointer-events:none;">${h.label}</text>
@@ -566,7 +666,7 @@ class AbrahangsTimer {
 
     const labelsMarkup = TOP_PROFILE.labels.map(lb => `<text x="${lb.x}" y="${lb.y}" text-anchor="middle" font-family="Archivo, sans-serif" font-size="2.9" font-weight="700" fill="#6b5a44" style="pointer-events:none;">${lb.text}</text>`).join('');
 
-    this.boardSvg.innerHTML = `
+    return `
       <g transform="matrix(0.48144766,0,0,0.48148624,47.963938,-34.0533)">
         <path d="${TOP_PROFILE.boardOutline}" fill="#d8c39c" stroke="rgba(0,0,0,0.16)" stroke-width="0.4"></path>
       </g>
@@ -577,12 +677,35 @@ class AbrahangsTimer {
       ${labelsMarkup}
       ${holdsMarkup}
     `;
+  }
 
+  renderBoard() {
+    const { status, editHolds, editGroup, setIndex } = this.state;
+    const P = this.protocol();
+    const accent = this.getAccent();
+    const assign = this.state.assignments || DEFAULT_ASSIGN;
+    const g = P.sets[Math.min(setIndex, P.sets.length - 1)];
+    const editColor = (GROUP_META.find(m => m.key === editGroup) || {}).color || '#e2a33e';
+
+    let highlightIds, highlightColor;
+    if (editHolds) {
+      highlightIds = assign[editGroup] || [];
+      highlightColor = editColor;
+    } else {
+      highlightIds = status === 'done' ? [] : (Array.isArray(g.holds) ? g.holds : (assign[g.holds] || []));
+      highlightColor = accent;
+    }
+
+    this.boardSvg.innerHTML = this.buildBoardMarkup(highlightIds, highlightColor);
     this.renderTooltip();
   }
 
+  renderSetupBoard() {
+    this.setupBoardSvg.innerHTML = this.buildBoardMarkup(this.state.repeatersSetup.holdIds, ACCENT_MAP.hang);
+  }
+
   renderTooltip() {
-    const { hoverHold, hoverZone } = this.state;
+    const { hoverHold, hoverZone, setIndex } = this.state;
     const P = this.protocol();
     const assign = this.state.assignments || DEFAULT_ASSIGN;
     const relevantGroups = this.groupsForProtocol(P);
@@ -590,7 +713,10 @@ class AbrahangsTimer {
     if (hoverHold) {
       const h = BOARD.find(b => b.id === hoverHold);
       if (h) {
-        const usedBy = relevantGroups.filter(m => (assign[m.key] || []).includes(h.id)).map(m => m.label);
+        const g = P.sets[Math.min(setIndex, P.sets.length - 1)];
+        const usedBy = Array.isArray(g.holds)
+          ? (g.holds.includes(h.id) ? [g.name] : [])
+          : relevantGroups.filter(m => (assign[m.key] || []).includes(h.id)).map(m => m.label);
         tooltip = {
           left: (h.cx / 210 * 100) + '%',
           top: (h.y / 62 * 100) + '%',
@@ -639,15 +765,36 @@ class AbrahangsTimer {
   }
 
   render() {
-    const { status, phase, soundOn, editHolds, isLongRest } = this.state;
-    const P = this.protocol();
-    const accent = this.getAccent();
+    const { screen, status, phase, soundOn, editHolds, isLongRest } = this.state;
 
-    this.brandSub.textContent = P.tagline;
-    this.sessionPill.textContent = P.sessionNote;
-    this.renderModeTabs();
+    this.backBtn.hidden = screen === 'home';
+    this.homeScreenEl.hidden = screen !== 'home';
+    this.setupScreenEl.hidden = screen !== 'setup';
+    this.timerScreenEl.hidden = screen !== 'timer';
 
     this.soundBtn.textContent = soundOn ? 'Sound on' : 'Sound off';
+    this.sessionPill.hidden = screen === 'home';
+
+    if (screen === 'home') {
+      this.brandSub.textContent = '';
+      return;
+    }
+
+    const P = this.protocol();
+    this.brandSub.textContent = P.tagline;
+    this.sessionPill.textContent = P.sessionNote;
+
+    if (screen === 'setup') {
+      this.renderSetupBoard();
+      this.renderSetupPresets();
+      this.renderSetupFields();
+      const hasHolds = this.state.repeatersSetup.holdIds.length > 0;
+      this.setupStartBtn.disabled = !hasHolds;
+      this.setupStartBtn.textContent = hasHolds ? 'Start Session' : 'Pick a hold to start';
+      return;
+    }
+
+    const accent = this.getAccent();
     this.primaryBtn.textContent = status === 'running' ? 'Pause' : status === 'paused' ? 'Resume' : status === 'done' ? 'Restart' : 'Start';
     this.primaryBtn.style.background = accent;
     this.primaryBtn.style.boxShadow = `0 8px 24px ${accent}3a`;
@@ -663,6 +810,7 @@ class AbrahangsTimer {
     this.phaseLabelEl.textContent = phaseLabel;
     this.sublabelEl.textContent = sublabel;
 
+    this.editBtn.hidden = P.key === 'repeaters';
     this.editBtn.textContent = editHolds ? 'Done' : 'Edit holds';
 
     this.renderPips();
