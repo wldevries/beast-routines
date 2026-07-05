@@ -443,12 +443,28 @@ class AbrahangsTimer {
     });
   }
 
+  repProgress() {
+    const { phase, repIndex, isLongRest } = this.state;
+    if (phase === 'hang') return { completed: repIndex, active: repIndex };
+    if (phase === 'rest' && !isLongRest) return { completed: repIndex, active: -1 };
+    return { completed: 0, active: -1 };
+  }
+
   renderPips() {
     const { status, setIndex } = this.state;
     const P = this.protocol();
     const accent = this.getAccent();
+    const progress = this.repProgress();
     this.pipsEl.innerHTML = P.sets.map((_, i) => {
       const st = status === 'done' ? 'done' : i < setIndex ? 'done' : i === setIndex ? 'current' : 'future';
+      if (st === 'current' && P.repsPerSet > 1) {
+        const ticks = Array.from({ length: P.repsPerSet }, (_, r) => {
+          if (r < progress.completed) return `<span class="pip-micro" style="width:4px; background:rgba(226,163,62,0.55);"></span>`;
+          if (r === progress.active) return `<span class="pip-micro" style="width:6px; background:${accent}; box-shadow:0 0 7px ${accent};"></span>`;
+          return `<span class="pip-micro" style="width:4px; background:rgba(255,255,255,0.14);"></span>`;
+        }).join('');
+        return `<button type="button" class="pip pip-multi" data-pip-index="${i}" title="Jump to set">${ticks}</button>`;
+      }
       const bg = st === 'current' ? accent : st === 'done' ? 'rgba(226,163,62,0.55)' : 'rgba(255,255,255,0.10)';
       const width = st === 'current' ? '30px' : '16px';
       const shadow = st === 'current' ? `0 0 14px ${accent}` : 'none';

@@ -99,6 +99,8 @@ button { font-family: 'Archivo', sans-serif; cursor: pointer; }
 
 .pips { display: flex; align-items: center; gap: 9px; }
 .pip { height: 7px; padding: 0; border: none; border-radius: 99px; transition: width .3s ease, background .3s ease; }
+.pip-multi { display: flex; align-items: center; gap: 2px; background: transparent; }
+.pip-micro { height: 7px; border-radius: 2px; transition: width .25s ease, background .25s ease, box-shadow .25s ease; }
 
 .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; }
 .btn-primary {
