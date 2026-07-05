@@ -44,6 +44,18 @@ button { font-family: 'Archivo', sans-serif; cursor: pointer; }
   padding: 7px 14px; border-radius: 999px;
 }
 
+.mode-tabs {
+  display: flex; gap: 8px;
+  width: 100%; max-width: 1120px;
+  margin-top: 18px;
+}
+.mode-tab {
+  font-size: 12.5px; font-weight: 700; letter-spacing: .04em; color: #a99a87;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+  padding: 8px 16px; border-radius: 999px;
+}
+.mode-tab.active { color: #15110d; background: #e2a33e; border-color: #e2a33e; }
+
 .main {
   width: 100%; max-width: 1120px; flex: 1;
   display: flex; gap: 34px; flex-wrap: wrap;

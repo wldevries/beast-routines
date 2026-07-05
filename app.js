@@ -1,25 +1,9 @@
 'use strict';
 
-const CONFIG = {
-  prepareSeconds: 8,
-  hangSeconds: 10,
-  restSeconds: 50,
-  soundOn: true,
-};
-
 const ACCENT_MAP = { prepare: '#e2a33e', hang: '#5fb36b', rest: '#5b90c7', done: '#e2a33e', idle: '#e2a33e' };
 
-const ROUTINE = (() => {
-  const crimp = { name: '4-Finger Half-Crimp', target: '45 mm edge · row 2', intensity: '70–80% effort', cue: 'Both hands on a comfy large edge in a relaxed half-crimp. Pull up smoothly until you reach the target effort, hold, then ease off.', holds: 'bigEdge' };
-  const drag = { name: '3-Finger Open Drag', target: '30 mm pocket · row 1', intensity: '70–80% effort', cue: 'Index–middle–ring fingers in an open drag, thumb relaxed off the board. No crimping — let the fingers extend slightly.', holds: 'deepJug' };
-  const midPocket = { name: 'Middle 2-Finger Pocket', target: '50 mm pocket · row 2', intensity: '50–60% effort', cue: 'Middle and ring fingers only. Drop the intensity — you should feel loaded but nowhere near failure.', holds: 'topPocket' };
-  const frontPocket = { name: 'Front 2-Finger Pocket', target: '50 mm pocket · row 2', intensity: '50–60% effort', cue: 'Index and middle fingers only. Keep the pull light and controlled.', holds: 'topPocket' };
-  const midCrimp = { name: 'Middle 2-Finger Half-Crimp', target: '15 mm edge · row 1', intensity: '30–40% effort', cue: 'Middle and ring on a smaller edge — very light load. Stretch your pinkies out during the rest.', holds: 'smallEdge' };
-  const frontCrimp = { name: 'Front 2-Finger Half-Crimp', target: '15 mm edge · row 1', intensity: '30–40% effort', cue: 'Index and middle on a smaller edge — very light load. Stretch your pinkies out during the rest.', holds: 'smallEdge' };
-  return [crimp, crimp, crimp, drag, drag, drag, midPocket, frontPocket, midCrimp, frontCrimp];
-})();
-
-// Traced from the real Beastmaker 1000 board artwork (mm-accurate). viewBox 0..210 x 0..62.
+// ---- Beastmaker 1000 board geometry ----
+// Traced from the real board artwork (mm-accurate). viewBox 0..210 x 0..62.
 const BOARD = (() => {
   const mk = (id, x, y, w, h, label, desc) => ({ id, x, y, w, h, r: h / 2, cx: x + w / 2, ty: y + h / 2 + 1.05, label, desc });
   return [
@@ -61,15 +45,6 @@ const TOP_PROFILE = {
   ],
 };
 
-const DEFAULT_ASSIGN = { bigEdge: ['r2_0', 'r2_6'], deepJug: ['r1_1', 'r1_2'], topPocket: ['r2_1', 'r2_5'], smallEdge: ['r1_0', 'r1_3'] };
-
-const GROUP_META = [
-  { key: 'bigEdge', label: '4F Half-Crimp', color: '#e2a33e' },
-  { key: 'deepJug', label: '3F Open Drag', color: '#5fb36b' },
-  { key: 'topPocket', label: '2F Pocket', color: '#5b90c7' },
-  { key: 'smallEdge', label: '2F Small Crimp', color: '#d98a5b' },
-];
-
 const ZONE_META = {
   slopeL: { x: 62.5, y: 5.7, label: '35° Sloper', sub: 'Two-hand sloper shelf — not used for this routine' },
   slopeR: { x: 146.2, y: 5.7, label: '35° Sloper', sub: 'Two-hand sloper shelf — not used for this routine' },
@@ -78,14 +53,98 @@ const ZONE_META = {
   center: { x: 104.3, y: 5.7, label: '20° Sloper', sub: 'Full-width sloper rail — not used for this routine' },
 };
 
+// ---- grip hold groups (which board holds each named grip lights up) ----
+const DEFAULT_ASSIGN = {
+  bigEdge: ['r2_0', 'r2_6'],
+  deepJug: ['r1_1', 'r1_2'],
+  topPocket: ['r2_1', 'r2_5'],
+  smallEdge: ['r1_0', 'r1_3'],
+  repEdge: ['r3_0', 'r3_5'],
+};
+
+const GROUP_META = [
+  { key: 'bigEdge', label: '4F Half-Crimp', color: '#e2a33e' },
+  { key: 'deepJug', label: '3F Open Drag', color: '#5fb36b' },
+  { key: 'topPocket', label: '2F Pocket', color: '#5b90c7' },
+  { key: 'smallEdge', label: '2F Small Crimp', color: '#d98a5b' },
+  { key: 'repEdge', label: '4F Half-Crimp (20mm)', color: '#c75b5b' },
+];
+
 const HOLDS_STORAGE_KEY = 'abrahangs_holds_v2';
+const MODE_STORAGE_KEY = 'abrahangs_mode_v1';
+
+// ---- protocols ----
+const ABRAHANGS_SETS = (() => {
+  const crimp = { name: '4-Finger Half-Crimp', target: '45 mm edge · row 2', intensity: '70–80% effort', cue: 'Both hands on a comfy large edge in a relaxed half-crimp. Pull up smoothly until you reach the target effort, hold, then ease off.', holds: 'bigEdge' };
+  const drag = { name: '3-Finger Open Drag', target: '30 mm pocket · row 1', intensity: '70–80% effort', cue: 'Index–middle–ring fingers in an open drag, thumb relaxed off the board. No crimping — let the fingers extend slightly.', holds: 'deepJug' };
+  const midPocket = { name: 'Middle 2-Finger Pocket', target: '50 mm pocket · row 2', intensity: '50–60% effort', cue: 'Middle and ring fingers only. Drop the intensity — you should feel loaded but nowhere near failure.', holds: 'topPocket' };
+  const frontPocket = { name: 'Front 2-Finger Pocket', target: '50 mm pocket · row 2', intensity: '50–60% effort', cue: 'Index and middle fingers only. Keep the pull light and controlled.', holds: 'topPocket' };
+  const midCrimp = { name: 'Middle 2-Finger Half-Crimp', target: '15 mm edge · row 1', intensity: '30–40% effort', cue: 'Middle and ring on a smaller edge — very light load. Stretch your pinkies out during the rest.', holds: 'smallEdge' };
+  const frontCrimp = { name: 'Front 2-Finger Half-Crimp', target: '15 mm edge · row 1', intensity: '30–40% effort', cue: 'Index and middle on a smaller edge — very light load. Stretch your pinkies out during the rest.', holds: 'smallEdge' };
+  return [crimp, crimp, crimp, drag, drag, drag, midPocket, frontPocket, midCrimp, frontCrimp];
+})();
+
+const REPEATERS_GRIP = {
+  name: '4-Finger Half-Crimp',
+  target: '20 mm edge · row 3',
+  intensity: 'Near-max effort (RPE 8–9)',
+  cue: 'Full bodyweight through a straight arm. Load hard through the last third of each rep — by rep 5–6 this should feel genuinely hard.',
+  holds: 'repEdge',
+};
+
+const PROTOCOLS = {
+  abrahangs: {
+    key: 'abrahangs', label: 'Abrahangs',
+    tagline: 'Beastmaker 1000 · 10 min × 2/day',
+    sessionNote: '6h+ between sessions',
+    prepareSeconds: 8, hangSeconds: 10, repRestSeconds: 50, setRestSeconds: 50, repsPerSet: 1,
+    sets: ABRAHANGS_SETS,
+    footNote: { tag: 'No-hang', text: 'Feet stay on the floor — pull through your fingers to the target effort, never to failure.' },
+    doneTitle: '10 sets done.',
+    doneBody: "That's your ~10 minutes of low-intensity loading. Come back in <strong>6+ hours</strong> for round two, and repeat every day. Strength shows up after a few weeks of consistency — trust the easy days.",
+    idlePreview: '10', idleUnit: 'min',
+    labels: {
+      prepare: 'First grip coming up',
+      hang: 'Pull to target effort',
+      restShort: 'Shake out · breathe',
+      restLong: 'Shake out · breathe',
+    },
+  },
+  repeaters: {
+    key: 'repeaters', label: 'Repeaters',
+    tagline: 'Beastmaker 1000 · 7:3 × 6 · near-max',
+    sessionNote: '48h+ between sessions',
+    prepareSeconds: 5, hangSeconds: 7, repRestSeconds: 3, setRestSeconds: 180, repsPerSet: 6,
+    sets: Array.from({ length: 6 }, () => REPEATERS_GRIP),
+    footNote: { tag: 'Full hang', text: 'Both feet off the ground, straight arm — this is a real hang at real intensity, not a submax load.' },
+    doneTitle: '6 sets done.',
+    doneBody: "That's 6 sets of 7:3 repeaters in the books. Rest at least <strong>48 hours</strong> before your next finger session — repeaters load the tendons harder than Abrahangs, so recovery matters more here.",
+    idlePreview: '6', idleUnit: 'sets',
+    labels: {
+      prepare: 'First rep coming up',
+      hang: 'Hold near-max effort',
+      restShort: 'Shake out · stay loose',
+      restLong: 'Long rest · shake out fully',
+    },
+  },
+};
+
+function formatSeconds(sec) {
+  const s = Math.max(0, Math.ceil(sec));
+  if (s < 60) return String(s);
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, '0')}`;
+}
 
 class AbrahangsTimer {
   constructor() {
+    const protocolKey = this.loadMode();
+    const P = PROTOCOLS[protocolKey];
     this.state = {
-      status: 'idle', phase: 'prepare', setIndex: 0,
-      remaining: CONFIG.prepareSeconds, phaseTotal: CONFIG.prepareSeconds,
-      soundOn: CONFIG.soundOn, editHolds: false, editGroup: 'bigEdge',
+      protocolKey, status: 'idle', phase: 'prepare', setIndex: 0, repIndex: 0, isLongRest: false,
+      remaining: P.prepareSeconds, phaseTotal: P.prepareSeconds,
+      soundOn: true, editHolds: false, editGroup: this.groupsForProtocol(P)[0].key,
       assignments: null, hoverHold: null, hoverZone: null,
     };
     this.timer = null;
@@ -98,7 +157,16 @@ class AbrahangsTimer {
     this.render();
   }
 
+  protocol() { return PROTOCOLS[this.state.protocolKey]; }
+  groupsForProtocol(P) {
+    const keys = [...new Set(P.sets.map(s => s.holds))];
+    return GROUP_META.filter(m => keys.includes(m.key));
+  }
+
   queryDom() {
+    this.brandSub = document.getElementById('brandSub');
+    this.sessionPill = document.getElementById('sessionPill');
+    this.modeTabsEl = document.getElementById('modeTabs');
     this.soundBtn = document.getElementById('soundBtn');
     this.primaryBtn = document.getElementById('primaryBtn');
     this.skipBtn = document.getElementById('skipBtn');
@@ -124,6 +192,11 @@ class AbrahangsTimer {
     this.skipBtn.addEventListener('click', () => this.skip());
     this.resetBtn.addEventListener('click', () => this.reset());
     this.editBtn.addEventListener('click', () => this.toggleEdit());
+
+    this.modeTabsEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-mode]');
+      if (btn) this.setProtocol(btn.dataset.mode);
+    });
 
     this.pipsEl.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-pip-index]');
@@ -158,6 +231,15 @@ class AbrahangsTimer {
   }
 
   // ---- persistence ----
+  loadMode() {
+    try {
+      const m = localStorage.getItem(MODE_STORAGE_KEY);
+      if (m && PROTOCOLS[m]) return m;
+    } catch (e) {}
+    return 'abrahangs';
+  }
+  persistMode(key) { try { localStorage.setItem(MODE_STORAGE_KEY, key); } catch (e) {} }
+
   loadAssignments() {
     let saved = null;
     try { const r = localStorage.getItem(HOLDS_STORAGE_KEY); if (r) saved = JSON.parse(r); } catch (e) {}
@@ -227,21 +309,36 @@ class AbrahangsTimer {
     this.paintTick();
   }
 
-  enter(phase, idx) {
-    const dur = phase === 'hang' ? CONFIG.hangSeconds : phase === 'rest' ? CONFIG.restSeconds : CONFIG.prepareSeconds;
+  enterPrepare() {
+    const P = this.protocol();
     this.lastTs = performance.now();
-    this.setState({ phase, setIndex: idx, remaining: dur, phaseTotal: dur });
+    this.setState({ phase: 'prepare', setIndex: 0, repIndex: 0, isLongRest: false, remaining: P.prepareSeconds, phaseTotal: P.prepareSeconds });
+  }
+  enterHang(setIdx, repIdx) {
+    const P = this.protocol();
+    this.lastTs = performance.now();
+    this.setState({ phase: 'hang', setIndex: setIdx, repIndex: repIdx, remaining: P.hangSeconds, phaseTotal: P.hangSeconds });
+  }
+  enterRest(setIdx, repIdx, isLongRest) {
+    const P = this.protocol();
+    const dur = isLongRest ? P.setRestSeconds : P.repRestSeconds;
+    this.lastTs = performance.now();
+    this.setState({ phase: 'rest', setIndex: setIdx, repIndex: repIdx, isLongRest, remaining: dur, phaseTotal: dur });
   }
 
   advance() {
+    const P = this.protocol();
     const ph = this.state.phase;
-    const idx = this.state.setIndex;
-    if (ph === 'prepare') { this.enter('hang', 0); this.goBeep(); }
+    const { setIndex, repIndex } = this.state;
+    if (ph === 'prepare') { this.enterHang(0, 0); this.goBeep(); }
     else if (ph === 'hang') {
-      if (idx >= 9) this.finish();
-      else { this.enter('rest', idx); this.restBeep(); }
+      const lastRepInSet = repIndex >= P.repsPerSet - 1;
+      const lastSet = setIndex >= P.sets.length - 1;
+      if (lastRepInSet && lastSet) { this.finish(); }
+      else if (lastRepInSet) { this.enterRest(setIndex + 1, 0, true); this.restBeep(); }
+      else { this.enterRest(setIndex, repIndex + 1, false); this.restBeep(); }
     } else {
-      this.enter('hang', idx + 1); this.goBeep();
+      this.enterHang(setIndex, repIndex); this.goBeep();
     }
   }
 
@@ -255,7 +352,8 @@ class AbrahangsTimer {
   }
   startRoutine() {
     this.ensureAudio();
-    this.setState({ status: 'running', phase: 'prepare', setIndex: 0, remaining: CONFIG.prepareSeconds, phaseTotal: CONFIG.prepareSeconds });
+    const P = this.protocol();
+    this.setState({ status: 'running', phase: 'prepare', setIndex: 0, repIndex: 0, isLongRest: false, remaining: P.prepareSeconds, phaseTotal: P.prepareSeconds });
     this.beep(520, 0.10, 'sine', 0.16);
     this.run();
   }
@@ -263,7 +361,8 @@ class AbrahangsTimer {
   resume() { this.ensureAudio(); this.setState({ status: 'running' }); this.run(); }
   reset() {
     this.stop();
-    this.setState({ status: 'idle', phase: 'prepare', setIndex: 0, remaining: CONFIG.prepareSeconds, phaseTotal: CONFIG.prepareSeconds });
+    const P = this.protocol();
+    this.setState({ status: 'idle', phase: 'prepare', setIndex: 0, repIndex: 0, isLongRest: false, remaining: P.prepareSeconds, phaseTotal: P.prepareSeconds });
   }
   skip() {
     if (this.state.status === 'idle' || this.state.status === 'done') return;
@@ -272,11 +371,23 @@ class AbrahangsTimer {
   }
   jumpTo(i) {
     this.ensureAudio();
-    this.enter('hang', i);
+    this.enterHang(i, 0);
     this.setState({ status: 'running' });
     this.run();
   }
   toggleSound() { this.ensureAudio(); this.setState(s => ({ soundOn: !s.soundOn })); }
+
+  setProtocol(key) {
+    if (!PROTOCOLS[key] || this.state.protocolKey === key) return;
+    this.stop();
+    const P = PROTOCOLS[key];
+    this.setState({
+      protocolKey: key, status: 'idle', phase: 'prepare', setIndex: 0, repIndex: 0, isLongRest: false,
+      remaining: P.prepareSeconds, phaseTotal: P.prepareSeconds,
+      editHolds: false, editGroup: this.groupsForProtocol(P)[0].key,
+    });
+    this.persistMode(key);
+  }
 
   // ---- board editing ----
   toggleEdit() { this.setState(s => ({ editHolds: !s.editHolds })); }
@@ -302,20 +413,41 @@ class AbrahangsTimer {
   leaveZone() { if (this.state.hoverZone === null) return; this.setState({ hoverZone: null }); }
 
   // ---- rendering ----
-  paintTick() {
+  computeCountdown() {
     const { status, remaining, phaseTotal } = this.state;
-    const displayText = status === 'idle' ? '10' : status === 'done' ? '✓' : String(Math.max(0, Math.ceil(remaining)));
-    this.displayTextEl.textContent = displayText;
+    const P = this.protocol();
+    let displayText, unitText;
+    if (status === 'idle') { displayText = P.idlePreview; unitText = P.idleUnit; }
+    else if (status === 'done') { displayText = '✓'; unitText = ''; }
+    else {
+      const secs = Math.max(0, Math.ceil(remaining));
+      displayText = formatSeconds(remaining);
+      unitText = secs < 60 ? 'sec' : '';
+    }
     const frac = (status === 'idle' || status === 'done') ? 1 : Math.max(0, Math.min(1, remaining / phaseTotal));
+    return { displayText, unitText, frac };
+  }
+
+  paintTick() {
+    const { displayText, frac } = this.computeCountdown();
+    this.displayTextEl.textContent = displayText;
     const deg = frac * 360;
     const accent = this.getAccent();
     this.ring.style.background = `conic-gradient(${accent} ${deg}deg, rgba(255,255,255,0.06) ${deg}deg)`;
   }
 
+  renderModeTabs() {
+    const active = this.state.protocolKey;
+    this.modeTabsEl.querySelectorAll('[data-mode]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === active);
+    });
+  }
+
   renderPips() {
     const { status, setIndex } = this.state;
+    const P = this.protocol();
     const accent = this.getAccent();
-    this.pipsEl.innerHTML = ROUTINE.map((_, i) => {
+    this.pipsEl.innerHTML = P.sets.map((_, i) => {
       const st = status === 'done' ? 'done' : i < setIndex ? 'done' : i === setIndex ? 'current' : 'future';
       const bg = st === 'current' ? accent : st === 'done' ? 'rgba(226,163,62,0.55)' : 'rgba(255,255,255,0.10)';
       const width = st === 'current' ? '30px' : '16px';
@@ -325,24 +457,28 @@ class AbrahangsTimer {
   }
 
   renderGripCard() {
-    const { status, phase, setIndex } = this.state;
+    const { status, phase, setIndex, repIndex, isLongRest } = this.state;
+    const P = this.protocol();
     if (status === 'done') {
       this.gripCardEl.innerHTML = `
         <div class="done-card">
           <div class="done-label">Session complete</div>
-          <div class="done-title">10 sets done.</div>
-          <p class="done-body">That's your ~10 minutes of low-intensity loading. Come back in <strong>6+ hours</strong> for round two, and repeat every day. Strength shows up after a few weeks of consistency — trust the easy days.</p>
+          <div class="done-title">${P.doneTitle}</div>
+          <p class="done-body">${P.doneBody}</p>
         </div>`;
       return;
     }
-    const g = ROUTINE[Math.min(setIndex, 9)];
+    const g = P.sets[Math.min(setIndex, P.sets.length - 1)];
     const accent = this.getAccent();
     const isRest = phase === 'rest';
+    const gripLabel = isRest && isLongRest ? 'Up Next' : 'Current Grip';
+    const setNumber = Math.min(setIndex + 1, P.sets.length);
+    const repSuffix = P.repsPerSet > 1 ? ` · Rep ${Math.min(repIndex + 1, P.repsPerSet)}/${P.repsPerSet}` : '';
     this.gripCardEl.innerHTML = `
       <div class="grip-card">
         <div class="grip-card-top">
-          <div class="grip-label" style="color:${accent}">${isRest ? 'Up Next' : 'Current Grip'}</div>
-          <div class="set-number">Set ${Math.min(setIndex + 1, 10)} / 10</div>
+          <div class="grip-label" style="color:${accent}">${gripLabel}</div>
+          <div class="set-number">Set ${setNumber} / ${P.sets.length}${repSuffix}</div>
         </div>
         <div class="grip-name">${g.name}</div>
         <div class="grip-tags">
@@ -351,17 +487,18 @@ class AbrahangsTimer {
         </div>
         <p class="grip-cue">${g.cue}</p>
         <div class="nohang-note">
-          <span class="tag">No-hang</span>
-          <span>Feet stay on the floor — pull through your fingers to the target effort, never to failure.</span>
+          <span class="tag">${P.footNote.tag}</span>
+          <span>${P.footNote.text}</span>
         </div>
       </div>`;
   }
 
   renderBoard() {
     const { status, editHolds, editGroup, setIndex } = this.state;
+    const P = this.protocol();
     const accent = this.getAccent();
     const assign = this.state.assignments || DEFAULT_ASSIGN;
-    const g = ROUTINE[Math.min(setIndex, 9)];
+    const g = P.sets[Math.min(setIndex, P.sets.length - 1)];
     const activeIds = status === 'done' ? [] : (assign[g.holds] || []);
     const editColor = (GROUP_META.find(m => m.key === editGroup) || {}).color || '#e2a33e';
     const editIds = assign[editGroup] || [];
@@ -430,12 +567,14 @@ class AbrahangsTimer {
 
   renderTooltip() {
     const { hoverHold, hoverZone } = this.state;
+    const P = this.protocol();
     const assign = this.state.assignments || DEFAULT_ASSIGN;
+    const relevantGroups = this.groupsForProtocol(P);
     let tooltip = null;
     if (hoverHold) {
       const h = BOARD.find(b => b.id === hoverHold);
       if (h) {
-        const usedBy = GROUP_META.filter(m => (assign[m.key] || []).includes(h.id)).map(m => m.label);
+        const usedBy = relevantGroups.filter(m => (assign[m.key] || []).includes(h.id)).map(m => m.label);
         tooltip = {
           left: (h.cx / 210 * 100) + '%',
           top: (h.y / 62 * 100) + '%',
@@ -461,13 +600,15 @@ class AbrahangsTimer {
 
   renderEditPanel() {
     const { editHolds, editGroup } = this.state;
+    const P = this.protocol();
+    const groups = this.groupsForProtocol(P);
     if (!editHolds) {
       this.editPanelEl.innerHTML = '';
       this.notEditingHintEl.hidden = false;
       return;
     }
     this.notEditingHintEl.hidden = true;
-    const groupsMarkup = GROUP_META.map(m => {
+    const groupsMarkup = groups.map(m => {
       const active = m.key === editGroup;
       const bg = active ? m.color : 'rgba(255,255,255,0.05)';
       const fg = active ? '#15110d' : '#c8bcab';
@@ -482,8 +623,13 @@ class AbrahangsTimer {
   }
 
   render() {
-    const { status, phase, soundOn, editHolds } = this.state;
+    const { status, phase, soundOn, editHolds, isLongRest } = this.state;
+    const P = this.protocol();
     const accent = this.getAccent();
+
+    this.brandSub.textContent = P.tagline;
+    this.sessionPill.textContent = P.sessionNote;
+    this.renderModeTabs();
 
     this.soundBtn.textContent = soundOn ? 'Sound on' : 'Sound off';
     this.primaryBtn.textContent = status === 'running' ? 'Pause' : status === 'paused' ? 'Resume' : status === 'done' ? 'Restart' : 'Start';
@@ -492,14 +638,13 @@ class AbrahangsTimer {
     this.ringGlow.style.background = `radial-gradient(circle, ${accent}44 0%, transparent 68%)`;
     this.phaseLabelEl.style.color = accent;
 
-    let phaseLabel, unitText, sublabel;
-    if (status === 'idle') { phaseLabel = 'Ready'; unitText = 'min'; sublabel = 'Press start'; }
-    else if (status === 'done') { phaseLabel = 'Complete'; unitText = ''; sublabel = 'Nice work'; }
-    else if (phase === 'prepare') { phaseLabel = 'Get Ready'; unitText = 'sec'; sublabel = 'First grip coming up'; }
-    else if (phase === 'hang') { phaseLabel = 'Hang'; unitText = 'sec'; sublabel = 'Pull to target effort'; }
-    else { phaseLabel = 'Rest'; unitText = 'sec'; sublabel = 'Shake out · breathe'; }
+    let phaseLabel, sublabel;
+    if (status === 'idle') { phaseLabel = 'Ready'; sublabel = 'Press start'; }
+    else if (status === 'done') { phaseLabel = 'Complete'; sublabel = 'Nice work'; }
+    else if (phase === 'prepare') { phaseLabel = 'Get Ready'; sublabel = P.labels.prepare; }
+    else if (phase === 'hang') { phaseLabel = 'Hang'; sublabel = P.labels.hang; }
+    else { phaseLabel = 'Rest'; sublabel = isLongRest ? P.labels.restLong : P.labels.restShort; }
     this.phaseLabelEl.textContent = phaseLabel;
-    this.unitTextEl.textContent = unitText;
     this.sublabelEl.textContent = sublabel;
 
     this.editBtn.textContent = editHolds ? 'Done' : 'Edit holds';
@@ -509,6 +654,7 @@ class AbrahangsTimer {
     this.renderBoard();
     this.renderEditPanel();
     this.paintTick();
+    this.unitTextEl.textContent = this.computeCountdown().unitText;
   }
 }
 

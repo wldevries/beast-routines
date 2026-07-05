@@ -15,13 +15,18 @@
   <header class="header">
     <div class="brand">
       <div class="brand-name">ABRA·HANGS</div>
-      <div class="brand-sub">Beastmaker 1000 · 10 min × 2/day</div>
+      <div class="brand-sub" id="brandSub"></div>
     </div>
     <div class="header-actions">
-      <span class="pill-static">6h+ between sessions</span>
+      <span class="pill-static" id="sessionPill"></span>
       <button id="soundBtn" class="pill-btn" type="button">Sound on</button>
     </div>
   </header>
+
+  <nav class="mode-tabs" id="modeTabs">
+    <button class="mode-tab" data-mode="abrahangs" type="button">Abrahangs</button>
+    <button class="mode-tab" data-mode="repeaters" type="button">Repeaters</button>
+  </nav>
 
   <main class="main">
     <section class="timer-section">
