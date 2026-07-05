@@ -636,7 +636,7 @@ class AbrahangsTimer {
       </div>`;
   }
 
-  buildBoardMarkup(highlightIds, highlightColor) {
+  buildBoardMarkup(highlightIds, highlightColor, clipId) {
     const holdsMarkup = BOARD.map(h => {
       const on = highlightIds.includes(h.id);
       const fill = on ? highlightColor : '#c2a87d';
@@ -662,16 +662,16 @@ class AbrahangsTimer {
 
     const slopersMarkup = TOP_PROFILE.slopers.map(s => {
       const zf = zoneFill(s.id, '#ceb887', '#dcc79c');
-      return `<path data-zone-id="${s.id}" d="${s.d}" fill="${zf.fill}" stroke="${zf.stroke}" stroke-width="${zf.sw}" clip-path="url(#boardOutlineClip)"></path>`;
+      return `<path data-zone-id="${s.id}" d="${s.d}" fill="${zf.fill}" stroke="${zf.stroke}" stroke-width="${zf.sw}" clip-path="url(#${clipId})"></path>`;
     }).join('');
 
     const jugsMarkup = TOP_PROFILE.jugs.map(j => {
       const zf = zoneFill(j.id, '#c3a575', '#d3b689');
-      return `<path data-zone-id="${j.id}" d="${j.d}" fill="${zf.fill}" stroke="${zf.stroke}" stroke-width="${zf.sw}" clip-path="url(#boardOutlineClip)"></path>`;
+      return `<path data-zone-id="${j.id}" d="${j.d}" fill="${zf.fill}" stroke="${zf.stroke}" stroke-width="${zf.sw}" clip-path="url(#${clipId})"></path>`;
     }).join('');
 
     const centerZf = zoneFill('center', '#d9c194', '#e6d3a8');
-    const centerMarkup = `<path data-zone-id="center" d="${TOP_PROFILE.center.d}" fill="${centerZf.fill}" stroke="${centerZf.stroke}" stroke-width="${centerZf.sw}" clip-path="url(#boardOutlineClip)"></path>`;
+    const centerMarkup = `<path data-zone-id="center" d="${TOP_PROFILE.center.d}" fill="${centerZf.fill}" stroke="${centerZf.stroke}" stroke-width="${centerZf.sw}" clip-path="url(#${clipId})"></path>`;
 
     const groovesMarkup = TOP_PROFILE.grooves.map(d => `<path d="${d}" fill="none" stroke="rgba(0,0,0,0.22)" stroke-width="0.35" style="pointer-events:none;"></path>`).join('');
 
@@ -679,7 +679,7 @@ class AbrahangsTimer {
 
     return `
       <defs>
-        <clipPath id="boardOutlineClip">
+        <clipPath id="${clipId}">
           <path d="${TOP_PROFILE.boardOutline}" transform="matrix(0.48144766,0,0,0.48148624,47.963938,-34.0533)"></path>
         </clipPath>
       </defs>
@@ -712,12 +712,12 @@ class AbrahangsTimer {
       highlightColor = accent;
     }
 
-    this.boardSvg.innerHTML = this.buildBoardMarkup(highlightIds, highlightColor);
+    this.boardSvg.innerHTML = this.buildBoardMarkup(highlightIds, highlightColor, 'boardOutlineClip');
     this.renderTooltip();
   }
 
   renderSetupBoard() {
-    this.setupBoardSvg.innerHTML = this.buildBoardMarkup(this.state.repeatersSetup.holdIds, ACCENT_MAP.hang);
+    this.setupBoardSvg.innerHTML = this.buildBoardMarkup(this.state.repeatersSetup.holdIds, ACCENT_MAP.hang, 'setupBoardOutlineClip');
   }
 
   renderTooltip() {
