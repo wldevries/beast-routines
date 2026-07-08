@@ -19,6 +19,7 @@
     </div>
     <div class="header-actions">
       <button id="backBtn" class="pill-btn back-btn" type="button" hidden>&lsaquo; Modes</button>
+      <button id="logbookBtn" class="pill-btn" type="button">Logbook</button>
       <span class="pill-static" id="sessionPill"></span>
       <button id="soundBtn" class="pill-btn" type="button">Sound on</button>
     </div>
@@ -39,6 +40,14 @@
         <div class="mode-card-sub" id="repeatersCardSub"></div>
       </button>
     </div>
+  </section>
+
+  <section class="logbook-screen" id="logbookScreen" hidden>
+    <div class="logbook-header">
+      <h2 class="logbook-title">Logbook</h2>
+      <button id="logbookClearBtn" class="logbook-clear-btn" type="button" hidden>Clear all</button>
+    </div>
+    <div class="logbook-list" id="logbookList"></div>
   </section>
 
   <section class="setup-screen" id="setupScreen" hidden>

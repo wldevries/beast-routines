@@ -333,8 +333,7 @@ class AbrahangsTimer {
       idlePreview: String(cfg.setsCount),
     };
   }
-  describeHolds(holdIds) {
-    const board = this.board();
+  describeHolds(holdIds, board = this.board()) {
     const descs = holdIds.map(id => { const h = board.holds.find(b => b.id === id); return h ? h.shortDesc : null; }).filter(Boolean);
     const uniqueDescs = [...new Set(descs)];
     return uniqueDescs.length ? uniqueDescs.join(' + ') : 'Selected edge';
@@ -354,6 +353,10 @@ class AbrahangsTimer {
     this.sessionPill = document.getElementById('sessionPill');
     this.backBtn = document.getElementById('backBtn');
     this.homeScreenEl = document.getElementById('homeScreen');
+    this.logbookScreenEl = document.getElementById('logbookScreen');
+    this.logbookListEl = document.getElementById('logbookList');
+    this.logbookClearBtn = document.getElementById('logbookClearBtn');
+    this.logbookBtn = document.getElementById('logbookBtn');
     this.setupScreenEl = document.getElementById('setupScreen');
     this.timerScreenEl = document.getElementById('timerScreen');
     this.boardPickerOptionsEl = document.getElementById('boardPickerOptions');
@@ -393,6 +396,12 @@ class AbrahangsTimer {
     this.editBtn.addEventListener('click', () => this.toggleEdit());
 
     this.backBtn.addEventListener('click', () => this.goHome());
+    this.logbookBtn.addEventListener('click', () => this.goLogbook());
+    this.logbookListEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-session-id]');
+      if (btn) this.deleteSession(btn.dataset.sessionId);
+    });
+    this.logbookClearBtn.addEventListener('click', () => this.clearSessions());
 
     this.homeScreenEl.addEventListener('click', (e) => {
       const modeBtn = e.target.closest('[data-mode]');
@@ -556,6 +565,25 @@ class AbrahangsTimer {
       localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(list));
     } catch (e) {}
   }
+  loadSessions() {
+    try {
+      const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch (e) { return []; }
+  }
+  saveSessions(list) {
+    try { localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+  deleteSession(id) {
+    this.saveSessions(this.loadSessions().filter(s => s.id !== id));
+    this.render();
+  }
+  clearSessions() {
+    if (!confirm("Delete all logged sessions? This can't be undone.")) return;
+    this.saveSessions([]);
+    this.render();
+  }
 
   // ---- state ----
   setState(patch) {
@@ -694,6 +722,10 @@ class AbrahangsTimer {
   goHome() {
     this.stop();
     this.setState({ screen: 'home', status: 'idle' });
+  }
+  goLogbook() {
+    this.stop();
+    this.setState({ screen: 'logbook' });
   }
   selectMode(key) {
     this.stop();
@@ -843,6 +875,61 @@ class AbrahangsTimer {
     const board = this.board();
     this.abrahangsCardSubEl.textContent = `${board.label} · 10 min × 2/day · low intensity`;
     this.repeatersCardSubEl.textContent = `${board.label} · near-max effort · configurable`;
+  }
+
+  formatSessionDate(iso) {
+    try {
+      const d = new Date(iso);
+      const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      return `${date} · ${time}`;
+    } catch (e) { return ''; }
+  }
+
+  renderLogbook() {
+    const sessions = this.loadSessions().slice().reverse();
+    this.logbookClearBtn.hidden = sessions.length === 0;
+    if (!sessions.length) {
+      this.logbookListEl.innerHTML = `<div class="logbook-empty">No sessions logged yet — finish a timer session and it'll show up here.</div>`;
+      return;
+    }
+    this.logbookListEl.innerHTML = sessions.map(s => this.renderLogbookEntry(s)).join('');
+  }
+
+  renderLogbookEntry(record) {
+    const isRepeaters = record.protocolKey === 'repeaters';
+    const protoLabel = isRepeaters ? 'Repeaters' : 'Abrahangs';
+    const accent = isRepeaters ? '#5fb36b' : '#e2a33e';
+    const board = BOARDS[record.params.boardKey] || this.board();
+    const when = this.formatSessionDate(record.finishedAt || record.startedAt);
+    const p = record.params;
+    const metaLine = isRepeaters
+      ? `${board.label} · ${p.hangSeconds}:${p.repRestSeconds} × ${p.repsPerSet} reps × ${p.setsCount} sets`
+      : `${board.label} · ${p.setsCount} sets × ${p.hangSeconds}s hold`;
+    const showReps = p.repsPerSet > 1;
+    const setsHtml = record.sets.map(s => {
+      const holdDesc = this.describeHolds(s.holdIds, board);
+      const short = s.actualReps < s.targetReps;
+      const repsPart = showReps
+        ? `<span class="logbook-set-reps${short ? ' logbook-set-reps-short' : ''}">${s.actualReps}/${s.targetReps} reps</span>`
+        : '';
+      return `<div class="logbook-set-row"><span>Set ${s.index + 1} — ${holdDesc}</span>${repsPart}</div>`;
+    }).join('');
+    return `
+      <div class="logbook-entry">
+        <div class="logbook-entry-header">
+          <div class="logbook-entry-title">
+            <span class="logbook-entry-protocol" style="color:${accent}">${protoLabel}</span>
+            <span class="logbook-entry-date">${when}</span>
+          </div>
+          <button type="button" class="logbook-delete-btn" data-session-id="${record.id}" title="Delete session">&times;</button>
+        </div>
+        <div class="logbook-entry-meta">${metaLine}</div>
+        <details class="logbook-entry-details">
+          <summary>Set details</summary>
+          <div class="logbook-set-list">${setsHtml}</div>
+        </details>
+      </div>`;
   }
 
   renderSetupPresets() {
@@ -1117,12 +1204,14 @@ class AbrahangsTimer {
     const { screen, status, phase, soundOn, editHolds, isLongRest } = this.state;
 
     this.backBtn.hidden = screen === 'home';
+    this.backBtn.textContent = screen === 'logbook' ? '‹ Home' : '‹ Modes';
     this.homeScreenEl.hidden = screen !== 'home';
+    this.logbookScreenEl.hidden = screen !== 'logbook';
     this.setupScreenEl.hidden = screen !== 'setup';
     this.timerScreenEl.hidden = screen !== 'timer';
 
     this.soundBtn.textContent = soundOn ? 'Sound on' : 'Sound off';
-    this.sessionPill.hidden = screen === 'home';
+    this.sessionPill.hidden = screen === 'home' || screen === 'logbook';
 
     document.title = `Abrahangs Timer — ${this.board().label}`;
 
@@ -1130,6 +1219,12 @@ class AbrahangsTimer {
       this.brandSub.textContent = this.board().label;
       this.renderBoardPicker();
       this.renderHomeCards();
+      return;
+    }
+
+    if (screen === 'logbook') {
+      this.brandSub.textContent = 'Session history';
+      this.renderLogbook();
       return;
     }
 
