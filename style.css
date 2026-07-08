@@ -48,9 +48,18 @@ button { font-family: 'Archivo', sans-serif; cursor: pointer; }
 
 .home-screen {
   width: 100%; max-width: 1120px; flex: 1;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px;
   padding: 40px 0;
 }
+.board-picker { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.board-picker-label { font-size: 12px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: #8a7c6c; }
+.board-picker-options { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.board-pill {
+  font-size: 13px; font-weight: 700; letter-spacing: .03em; color: #a99a87;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+  padding: 9px 18px; border-radius: 999px;
+}
+.board-pill-active { color: #15110d; background: #e2a33e; border-color: #e2a33e; }
 .mode-cards { width: 100%; display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
 .mode-card {
   flex: 1 1 320px; max-width: 440px;
@@ -73,8 +82,8 @@ button { font-family: 'Archivo', sans-serif; cursor: pointer; }
 .setup-title { font-weight: 900; font-size: 22px; margin: 0; }
 .setup-board-card { background: #1c160f; border: 1px solid rgba(255,255,255,0.07); border-radius: 18px; padding: 20px 22px; }
 .setup-board-hint { font-size: 12.5px; color: #8a7c6c; margin-bottom: 12px; text-align: center; }
-#setupBoardSvg { width: 100%; height: auto; display: block; }
-#setupBoardSvg [data-hold-id], #setupBoardSvg [data-zone-id] { cursor: pointer; }
+#setupBoardSvg { width: 100%; height: auto; display: block; margin: 0 auto; }
+#setupBoardSvg [data-hold-id] { cursor: pointer; }
 
 .setup-presets { display: flex; gap: 8px; flex-wrap: wrap; }
 .preset-pill {
@@ -217,8 +226,8 @@ button { font-family: 'Archivo', sans-serif; cursor: pointer; }
 .board-map-title { font-size: 12px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: #a99a87; }
 
 .board-wrap { position: relative; }
-#boardSvg { width: 100%; height: auto; display: block; }
-#boardSvg [data-hold-id], #boardSvg [data-zone-id] { cursor: pointer; }
+#boardSvg { width: 100%; height: auto; display: block; margin: 0 auto; }
+#boardSvg [data-hold-id] { cursor: pointer; }
 
 .tooltip {
   position: absolute; transform: translate(-50%, -100%) translateY(-8px);

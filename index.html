@@ -25,14 +25,18 @@
   </header>
 
   <section class="home-screen" id="homeScreen">
+    <div class="board-picker">
+      <div class="board-picker-label">Board</div>
+      <div class="board-picker-options" id="boardPickerOptions"></div>
+    </div>
     <div class="mode-cards">
       <button class="mode-card mode-card-abrahangs" data-mode="abrahangs" type="button">
         <div class="mode-card-title">Abrahangs</div>
-        <div class="mode-card-sub">Beastmaker 1000 &middot; 10 min &times; 2/day &middot; low intensity</div>
+        <div class="mode-card-sub" id="abrahangsCardSub"></div>
       </button>
       <button class="mode-card mode-card-repeaters" data-mode="repeaters" type="button">
         <div class="mode-card-title">Repeaters</div>
-        <div class="mode-card-sub">Beastmaker 1000 &middot; near-max effort &middot; configurable</div>
+        <div class="mode-card-sub" id="repeatersCardSub"></div>
       </button>
     </div>
   </section>
@@ -83,7 +87,7 @@
 
       <div class="board-card">
         <div class="board-card-header">
-          <div class="board-map-title">Board map &middot; 1000 series</div>
+          <div class="board-map-title" id="boardMapTitle">Board map</div>
           <button id="editBtn" class="pill-btn" type="button">Edit holds</button>
         </div>
 
