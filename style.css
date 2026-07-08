@@ -198,7 +198,21 @@ button { font-family: 'Archivo', sans-serif; cursor: pointer; }
 .done-body { font-size: 15px; line-height: 1.6; color: #c8bcab; margin: 0; }
 .done-body strong { color: #f0e8dc; }
 
-.board-card { background: #1c160f; border: 1px solid rgba(255,255,255,0.07); border-radius: 18px; padding: 16px 18px; }
+.reps-feedback-card { background: #211a13; border: 1px solid rgba(226,163,62,0.28); border-radius: 18px; padding: 20px 26px; }
+.reps-feedback-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.reps-feedback-label { font-size: 12px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; }
+.reps-feedback-target { font-size: 12.5px; color: #a99a87; }
+.reps-feedback-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 12px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.07);
+}
+.reps-feedback-question { font-size: 14.5px; color: #c8bcab; }
+.reps-stepper { display: flex; align-items: center; gap: 12px; }
+.reps-value { min-width: 54px; text-align: center; font-weight: 800; font-size: 17px; font-variant-numeric: tabular-nums; }
+.reps-value-target { color: #8a7c6c; font-weight: 600; font-size: 13px; margin-left: 4px; }
+
+.board-card { background: #1c160f; border: 1px solid rgba(255,255,255,0.07); border-radius: 18px; padding: 16px 18px; transition: border-color .25s ease, box-shadow .25s ease; }
+.board-card-active-edit { border-color: rgba(226,163,62,0.4); box-shadow: 0 0 0 1px rgba(226,163,62,0.15); }
 .board-card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .board-map-title { font-size: 12px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: #a99a87; }
 

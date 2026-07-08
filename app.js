@@ -72,6 +72,8 @@ const GROUP_META = [
 
 const HOLDS_STORAGE_KEY = 'abrahangs_holds_v2';
 const REPEATERS_SETUP_STORAGE_KEY = 'abrahangs_repeaters_setup_v1';
+const SESSIONS_STORAGE_KEY = 'abrahangs_sessions_v1';
+const MAX_STORED_SESSIONS = 100;
 
 // ---- protocols ----
 const ABRAHANGS_SETS = (() => {
@@ -176,24 +178,37 @@ class AbrahangsTimer {
   }
   buildRepeatersProtocol() {
     const cfg = this.state.repeatersSetup;
-    const descs = cfg.holdIds.map(id => {
+    const session = this.state.session;
+    const liveHolds = (session && session.protocolKey === 'repeaters') ? session.setHolds : null;
+    const sets = Array.from({ length: cfg.setsCount }, (_, i) => {
+      const holdIds = (liveHolds && liveHolds[i]) ? liveHolds[i] : cfg.holdIds;
+      return { ...REPEATERS_GRIP_TEXT, target: this.describeHolds(holdIds), holds: holdIds };
+    });
+    return {
+      ...REPEATERS_TEMPLATE,
+      tagline: `Beastmaker 1000 · ${cfg.hangSeconds}:${cfg.repRestSeconds} × ${cfg.setsCount} · near-max`,
+      hangSeconds: cfg.hangSeconds, repRestSeconds: cfg.repRestSeconds,
+      setRestSeconds: cfg.setRestSeconds, repsPerSet: cfg.repsPerSet,
+      sets,
+      doneTitle: `${cfg.setsCount} sets done.`,
+      doneBody: `That's ${cfg.setsCount} sets of ${cfg.hangSeconds}:${cfg.repRestSeconds} repeaters in the books. Rest at least <strong>48 hours</strong> before your next finger session — repeaters load the tendons harder than Abrahangs, so recovery matters more here.`,
+      idlePreview: String(cfg.setsCount),
+    };
+  }
+  describeHolds(holdIds) {
+    const descs = holdIds.map(id => {
       const h = BOARD.find(b => b.id === id);
       if (h) return `${h.label}mm ${h.desc.split(' · ')[0].toLowerCase()}`;
       const z = ZONE_META[id];
       return z ? z.label.toLowerCase() : null;
     }).filter(Boolean);
     const uniqueDescs = [...new Set(descs)];
-    const target = uniqueDescs.length ? uniqueDescs.join(' + ') : 'Selected edge';
-    return {
-      ...REPEATERS_TEMPLATE,
-      tagline: `Beastmaker 1000 · ${cfg.hangSeconds}:${cfg.repRestSeconds} × ${cfg.setsCount} · near-max`,
-      hangSeconds: cfg.hangSeconds, repRestSeconds: cfg.repRestSeconds,
-      setRestSeconds: cfg.setRestSeconds, repsPerSet: cfg.repsPerSet,
-      sets: Array.from({ length: cfg.setsCount }, () => ({ ...REPEATERS_GRIP_TEXT, target, holds: cfg.holdIds })),
-      doneTitle: `${cfg.setsCount} sets done.`,
-      doneBody: `That's ${cfg.setsCount} sets of ${cfg.hangSeconds}:${cfg.repRestSeconds} repeaters in the books. Rest at least <strong>48 hours</strong> before your next finger session — repeaters load the tendons harder than Abrahangs, so recovery matters more here.`,
-      idlePreview: String(cfg.setsCount),
-    };
+    return uniqueDescs.length ? uniqueDescs.join(' + ') : 'Selected edge';
+  }
+  resolveSetHoldIds(set) {
+    if (Array.isArray(set.holds)) return [...set.holds];
+    const assign = this.state.assignments || DEFAULT_ASSIGN;
+    return [...(assign[set.holds] || DEFAULT_ASSIGN[set.holds] || [])];
   }
   groupsForProtocol(P) {
     const keys = [...new Set(P.sets.map(s => s.holds))];
@@ -223,7 +238,9 @@ class AbrahangsTimer {
     this.unitTextEl = document.getElementById('unitText');
     this.sublabelEl = document.getElementById('sublabel');
     this.pipsEl = document.getElementById('pips');
+    this.repsFeedbackCardEl = document.getElementById('repsFeedbackCard');
     this.gripCardEl = document.getElementById('gripCard');
+    this.boardCardEl = document.querySelector('.board-card');
     this.boardSvg = document.getElementById('boardSvg');
     this.tooltipEl = document.getElementById('tooltip');
     this.editPanelEl = document.getElementById('editPanel');
@@ -282,7 +299,18 @@ class AbrahangsTimer {
     this.boardSvg.addEventListener('mouseleave', () => { this.leaveHold(); this.leaveZone(); });
     this.boardSvg.addEventListener('click', (e) => {
       const holdEl = e.target.closest('[data-hold-id]');
-      if (holdEl) this.toggleHold(holdEl.dataset.holdId);
+      if (holdEl) {
+        if (this.canEditNextHold()) { this.toggleNextSetHold(holdEl.dataset.holdId); return; }
+        this.toggleHold(holdEl.dataset.holdId);
+        return;
+      }
+      const zoneEl = e.target.closest('[data-zone-id]');
+      if (zoneEl && this.canEditNextHold()) this.toggleNextSetHold(zoneEl.dataset.zoneId);
+    });
+
+    this.repsFeedbackCardEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-reps-delta]');
+      if (btn) this.adjustSetReps(Number(btn.dataset.repsIndex), Number(btn.dataset.repsDelta));
     });
 
     document.addEventListener('keydown', (e) => {
@@ -321,6 +349,59 @@ class AbrahangsTimer {
     this.state.assignments = clean;
   }
   persist(a) { try { localStorage.setItem(HOLDS_STORAGE_KEY, JSON.stringify(a)); } catch (e) {} }
+
+  // ---- session recording ----
+  snapshotParams(P) {
+    if (P.key === 'repeaters') {
+      const cfg = this.state.repeatersSetup;
+      return {
+        hangSeconds: cfg.hangSeconds, repRestSeconds: cfg.repRestSeconds, repsPerSet: cfg.repsPerSet,
+        setsCount: cfg.setsCount, setRestSeconds: cfg.setRestSeconds, holdIds: [...cfg.holdIds],
+      };
+    }
+    return {
+      hangSeconds: P.hangSeconds, repRestSeconds: P.repRestSeconds, repsPerSet: P.repsPerSet,
+      setsCount: P.sets.length, setRestSeconds: P.setRestSeconds,
+    };
+  }
+  startSession(P) {
+    return {
+      id: `${Date.now()}`,
+      protocolKey: P.key,
+      startedAt: new Date().toISOString(),
+      finishedAt: null,
+      params: this.snapshotParams(P),
+      setHolds: P.sets.map(s => this.resolveSetHoldIds(s)),
+      setReps: new Array(P.sets.length).fill(null),
+    };
+  }
+  buildSessionRecord(session, P) {
+    return {
+      id: session.id,
+      protocolKey: session.protocolKey,
+      startedAt: session.startedAt,
+      finishedAt: session.finishedAt,
+      params: session.params,
+      sets: P.sets.map((s, i) => ({
+        index: i,
+        holdIds: session.setHolds[i],
+        targetReps: P.repsPerSet,
+        actualReps: session.setReps[i] == null ? P.repsPerSet : session.setReps[i],
+      })),
+    };
+  }
+  persistSessionRecord(record) {
+    try {
+      let list = [];
+      const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
+      if (raw) list = JSON.parse(raw);
+      if (!Array.isArray(list)) list = [];
+      const idx = list.findIndex(s => s.id === record.id);
+      if (idx >= 0) list[idx] = record; else list.push(record);
+      while (list.length > MAX_STORED_SESSIONS) list.shift();
+      localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(list));
+    } catch (e) {}
+  }
 
   // ---- state ----
   setState(patch) {
@@ -411,7 +492,14 @@ class AbrahangsTimer {
     }
   }
 
-  finish() { this.stop(); this.setState({ status: 'done' }); this.doneBeep(); }
+  finish() {
+    this.stop();
+    const P = this.protocol();
+    const session = this.state.session ? { ...this.state.session, finishedAt: new Date().toISOString() } : null;
+    this.setState({ status: 'done', session });
+    if (session) this.persistSessionRecord(this.buildSessionRecord(session, P));
+    this.doneBeep();
+  }
 
   primary() {
     const s = this.state.status;
@@ -421,8 +509,10 @@ class AbrahangsTimer {
   }
   startRoutine() {
     this.ensureAudio();
+    this.state.session = null; // clear any finished session so protocol() builds fresh from setup defaults, not stale overrides
     const P = this.protocol();
-    this.setState({ status: 'running', phase: 'prepare', setIndex: 0, repIndex: 0, isLongRest: false, remaining: P.prepareSeconds, phaseTotal: P.prepareSeconds });
+    const session = this.startSession(P);
+    this.setState({ status: 'running', phase: 'prepare', setIndex: 0, repIndex: 0, isLongRest: false, remaining: P.prepareSeconds, phaseTotal: P.prepareSeconds, session });
     this.beep(520, 0.10, 'sine', 0.16);
     this.run();
   }
@@ -523,6 +613,40 @@ class AbrahangsTimer {
     this.persistRepeatersSetup(repeatersSetup);
   }
 
+  // ---- next-set hold change (prospective — always about the set that hasn't started yet) ----
+  canEditNextHold() {
+    const { status, phase, isLongRest } = this.state;
+    if (status !== 'running' && status !== 'paused') return false;
+    if (phase !== 'rest' || !isLongRest) return false;
+    return this.protocol().key === 'repeaters';
+  }
+  toggleNextSetHold(id) {
+    if (!this.canEditNextHold()) return;
+    const session = this.state.session;
+    if (!session) return;
+    const idx = this.state.setIndex;
+    const cur = session.setHolds[idx] || [];
+    const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+    if (!next.length) return;
+    const setHolds = session.setHolds.map((h, k) => (k >= idx ? next : h));
+    this.setState({ session: { ...session, setHolds } });
+  }
+
+  // ---- reps feedback (retrospective — always about the set that just finished) ----
+  adjustSetReps(setIdx, delta) {
+    const session = this.state.session;
+    if (!session) return;
+    const P = this.protocol();
+    const target = P.repsPerSet;
+    const cur = session.setReps[setIdx] == null ? target : session.setReps[setIdx];
+    const next = Math.max(0, Math.min(target, cur + delta));
+    if (next === cur) return;
+    const setReps = session.setReps.map((r, k) => (k === setIdx ? next : r));
+    const nextSession = { ...session, setReps };
+    this.setState({ session: nextSession });
+    if (nextSession.finishedAt) this.persistSessionRecord(this.buildSessionRecord(nextSession, this.protocol()));
+  }
+
   // ---- rendering ----
   computeCountdown() {
     const { status, remaining, phaseTotal } = this.state;
@@ -599,9 +723,45 @@ class AbrahangsTimer {
     }).join('');
   }
 
+  renderRepsFeedbackCard() {
+    const { status, phase, setIndex, isLongRest } = this.state;
+    const P = this.protocol();
+    const session = this.state.session;
+
+    let feedbackIdx = -1;
+    if (status === 'done') feedbackIdx = setIndex;
+    else if (phase === 'rest' && isLongRest && setIndex > 0) feedbackIdx = setIndex - 1;
+
+    if (P.key !== 'repeaters' || !session || feedbackIdx < 0) {
+      this.repsFeedbackCardEl.innerHTML = '';
+      this.repsFeedbackCardEl.hidden = true;
+      return;
+    }
+    this.repsFeedbackCardEl.hidden = false;
+    const accent = this.getAccent();
+    const target = P.repsPerSet;
+    const val = session.setReps[feedbackIdx] == null ? target : session.setReps[feedbackIdx];
+    this.repsFeedbackCardEl.innerHTML = `
+      <div class="reps-feedback-card">
+        <div class="reps-feedback-header">
+          <span class="reps-feedback-label" style="color:${accent}">Set ${feedbackIdx + 1} Complete</span>
+          <span class="reps-feedback-target">${target} rep${target === 1 ? '' : 's'} planned</span>
+        </div>
+        <div class="reps-feedback-row">
+          <div class="reps-feedback-question">Reps completed</div>
+          <div class="reps-stepper">
+            <button type="button" class="stepper-btn" data-reps-index="${feedbackIdx}" data-reps-delta="-1">&minus;</button>
+            <div class="reps-value">${val}<span class="reps-value-target">/${target}</span></div>
+            <button type="button" class="stepper-btn" data-reps-index="${feedbackIdx}" data-reps-delta="1">&plus;</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
   renderGripCard() {
     const { status, phase, setIndex, repIndex, isLongRest } = this.state;
     const P = this.protocol();
+    const accent = this.getAccent();
     if (status === 'done') {
       this.gripCardEl.innerHTML = `
         <div class="done-card">
@@ -612,7 +772,6 @@ class AbrahangsTimer {
       return;
     }
     const g = P.sets[Math.min(setIndex, P.sets.length - 1)];
-    const accent = this.getAccent();
     const isRest = phase === 'rest';
     const gripLabel = isRest && isLongRest ? 'Up Next' : 'Current Grip';
     const setNumber = Math.min(setIndex + 1, P.sets.length);
@@ -713,6 +872,7 @@ class AbrahangsTimer {
     }
 
     this.boardSvg.innerHTML = this.buildBoardMarkup(highlightIds, highlightColor, 'boardOutlineClip');
+    this.boardCardEl.classList.toggle('board-card-active-edit', this.canEditNextHold());
     this.renderTooltip();
   }
 
@@ -762,10 +922,19 @@ class AbrahangsTimer {
   renderEditPanel() {
     const { editHolds, editGroup } = this.state;
     const P = this.protocol();
+    if (P.key === 'repeaters') {
+      this.editPanelEl.innerHTML = '';
+      this.notEditingHintEl.hidden = false;
+      this.notEditingHintEl.textContent = this.canEditNextHold()
+        ? 'Tap holds to change for the next set — applies for the rest of this session'
+        : 'Lit holds = current set · numbers are edge depth (mm)';
+      return;
+    }
     const groups = this.groupsForProtocol(P);
     if (!editHolds) {
       this.editPanelEl.innerHTML = '';
       this.notEditingHintEl.hidden = false;
+      this.notEditingHintEl.textContent = 'Lit holds = current grip · numbers are edge depth (mm)';
       return;
     }
     this.notEditingHintEl.hidden = true;
@@ -833,6 +1002,7 @@ class AbrahangsTimer {
     this.editBtn.textContent = editHolds ? 'Done' : 'Edit holds';
 
     this.renderPips();
+    this.renderRepsFeedbackCard();
     this.renderGripCard();
     this.renderBoard();
     this.renderEditPanel();
