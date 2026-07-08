@@ -222,7 +222,7 @@ const LEGACY_HOLDS_KEY = 'abrahangs_holds_v2';
 const LEGACY_REPEATERS_SETUP_KEY = 'abrahangs_repeaters_setup_v1';
 
 // ---- timing-only protocol scaffolding (board-agnostic) ----
-const DEFAULT_REPEATERS_TIMING = { hangSeconds: 7, repRestSeconds: 3, repsPerSet: 6, setsCount: 6, setRestSeconds: 180 };
+const DEFAULT_REPEATERS_TIMING = { hangSeconds: 7, repRestSeconds: 3, repsPerSet: 6, setsCount: 6, setRestSeconds: 180, weightKg: 0 };
 
 const REPEATERS_PRESETS = [
   { label: 'Classic · 7:3 × 6', hangSeconds: 7, repRestSeconds: 3, repsPerSet: 6, setsCount: 6, setRestSeconds: 180 },
@@ -236,6 +236,7 @@ const SETUP_FIELDS = [
   { key: 'repsPerSet', label: 'Reps per set', min: 2, max: 12, step: 1, suffix: '' },
   { key: 'setsCount', label: 'Sets', min: 1, max: 10, step: 1, suffix: '' },
   { key: 'setRestSeconds', label: 'Rest between sets', min: 60, max: 300, step: 15, suffix: '', formatDuration: true },
+  { key: 'weightKg', label: 'Added weight', min: 0, max: 50, step: 1, suffix: ' kg' },
 ];
 
 const PROTOCOLS = {
@@ -269,6 +270,17 @@ const REPEATERS_TEMPLATE = {
     restLong: 'Long rest · shake out fully',
   },
 };
+
+// Selecting holds always models 2 hands: keep 1-2 selected, swapping out the
+// oldest pick once a 3rd is tapped, and refusing to drop below the last one.
+function toggleCappedSelection(list, id, max = 2) {
+  if (list.includes(id)) {
+    if (list.length <= 1) return list;
+    return list.filter(x => x !== id);
+  }
+  if (list.length >= max) return [...list.slice(1), id];
+  return [...list, id];
+}
 
 function formatSeconds(sec) {
   const s = Math.max(0, Math.ceil(sec));
@@ -322,11 +334,12 @@ class AbrahangsTimer {
       const holdIds = (liveHolds && liveHolds[i]) ? liveHolds[i] : cfg.holdIds;
       return { name: '4-Finger Half-Crimp', intensity: 'Near-max effort (RPE 8–9)', cue: 'Full bodyweight through a straight arm. Load hard through the last third of each rep — by rep 5–6 this should feel genuinely hard.', target: this.describeHolds(holdIds), holds: holdIds };
     });
+    const weightTag = cfg.weightKg ? ` · +${cfg.weightKg}kg` : '';
     return {
       ...REPEATERS_TEMPLATE,
-      tagline: `${board.label} · ${cfg.hangSeconds}:${cfg.repRestSeconds} × ${cfg.setsCount} · near-max`,
+      tagline: `${board.label} · ${cfg.hangSeconds}:${cfg.repRestSeconds} × ${cfg.setsCount}${weightTag} · near-max`,
       hangSeconds: cfg.hangSeconds, repRestSeconds: cfg.repRestSeconds,
-      setRestSeconds: cfg.setRestSeconds, repsPerSet: cfg.repsPerSet,
+      setRestSeconds: cfg.setRestSeconds, repsPerSet: cfg.repsPerSet, weightKg: cfg.weightKg,
       sets,
       doneTitle: `${cfg.setsCount} sets done.`,
       doneBody: `That's ${cfg.setsCount} sets of ${cfg.hangSeconds}:${cfg.repRestSeconds} repeaters in the books. Rest at least <strong>48 hours</strong> before your next finger session — repeaters load the tendons harder than Abrahangs, so recovery matters more here.`,
@@ -493,6 +506,7 @@ class AbrahangsTimer {
       repsPerSet: Number(saved && saved.repsPerSet) || DEFAULT_REPEATERS_TIMING.repsPerSet,
       setsCount: Number(saved && saved.setsCount) || DEFAULT_REPEATERS_TIMING.setsCount,
       setRestSeconds: Number(saved && saved.setRestSeconds) || DEFAULT_REPEATERS_TIMING.setRestSeconds,
+      weightKg: Number(saved && saved.weightKg) || DEFAULT_REPEATERS_TIMING.weightKg,
     };
   }
   persistRepeatersSetup(cfg) { try { localStorage.setItem(REPEATERS_SETUP_STORAGE_PREFIX + this.board().key, JSON.stringify(cfg)); } catch (e) {} }
@@ -519,7 +533,7 @@ class AbrahangsTimer {
       const cfg = this.state.repeatersSetup;
       return {
         boardKey, hangSeconds: cfg.hangSeconds, repRestSeconds: cfg.repRestSeconds, repsPerSet: cfg.repsPerSet,
-        setsCount: cfg.setsCount, setRestSeconds: cfg.setRestSeconds, holdIds: [...cfg.holdIds],
+        setsCount: cfg.setsCount, setRestSeconds: cfg.setRestSeconds, holdIds: [...cfg.holdIds], weightKg: cfg.weightKg,
       };
     }
     return {
@@ -764,7 +778,8 @@ class AbrahangsTimer {
     const grp = this.state.editGroup;
     const base = this.state.assignments || this.board().abrahangs.defaultAssign;
     const cur = base[grp] || [];
-    const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+    const next = toggleCappedSelection(cur, id);
+    if (next === cur) return;
     const a = { ...base, [grp]: next };
     this.setState({ assignments: a });
     this.persist(a);
@@ -780,7 +795,8 @@ class AbrahangsTimer {
   // ---- repeaters setup ----
   toggleSetupHold(id) {
     const cur = this.state.repeatersSetup.holdIds;
-    const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+    const next = toggleCappedSelection(cur, id);
+    if (next === cur) return;
     const repeatersSetup = { ...this.state.repeatersSetup, holdIds: next };
     this.setState({ repeatersSetup });
     this.persistRepeatersSetup(repeatersSetup);
@@ -819,8 +835,8 @@ class AbrahangsTimer {
     if (!session) return;
     const idx = this.state.setIndex;
     const cur = session.setHolds[idx] || [];
-    const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
-    if (!next.length) return;
+    const next = toggleCappedSelection(cur, id);
+    if (next === cur) return;
     const setHolds = session.setHolds.map((h, k) => (k >= idx ? next : h));
     this.setState({ session: { ...session, setHolds } });
   }
@@ -904,7 +920,7 @@ class AbrahangsTimer {
     const when = this.formatSessionDate(record.finishedAt || record.startedAt);
     const p = record.params;
     const metaLine = isRepeaters
-      ? `${board.label} · ${p.hangSeconds}:${p.repRestSeconds} × ${p.repsPerSet} reps × ${p.setsCount} sets`
+      ? `${board.label} · ${p.hangSeconds}:${p.repRestSeconds} × ${p.repsPerSet} reps × ${p.setsCount} sets${p.weightKg ? ` · +${p.weightKg}kg` : ''}`
       : `${board.label} · ${p.setsCount} sets × ${p.hangSeconds}s hold`;
     const showReps = p.repsPerSet > 1;
     const setsHtml = record.sets.map(s => {
@@ -1047,6 +1063,7 @@ class AbrahangsTimer {
         <div class="grip-tags">
           <span class="tag-target">${g.target}</span>
           <span class="tag-intensity">${g.intensity}</span>
+          ${P.weightKg ? `<span class="tag-weight">+${P.weightKg}kg</span>` : ''}
         </div>
         <p class="grip-cue">${g.cue}</p>
         <div class="nohang-note">
@@ -1194,7 +1211,7 @@ class AbrahangsTimer {
       return `<button type="button" class="edit-group-btn" data-group-key="${m.key}" style="background:${bg}; color:${fg}; border-color:${bd};">${m.label}</button>`;
     }).join('');
     this.editPanelEl.innerHTML = `
-      <div class="edit-panel-hint">Pick a grip, then tap the holds you use for it. Saved on this device.</div>
+      <div class="edit-panel-hint">Pick a grip, then tap the 1-2 holds you use for it. Saved on this device.</div>
       <div class="edit-groups">${groupsMarkup}</div>
       <button type="button" class="reset-holds-btn" id="resetHoldsBtn">Reset to defaults</button>
     `;

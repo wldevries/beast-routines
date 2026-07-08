@@ -233,6 +233,11 @@ button { font-family: 'Archivo', sans-serif; cursor: pointer; }
   background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
   padding: 7px 13px; border-radius: 999px;
 }
+.tag-weight {
+  font-size: 13px; font-weight: 600; color: #f0e8dc;
+  background: rgba(95,179,107,0.14); border: 1px solid rgba(95,179,107,0.35);
+  padding: 7px 13px; border-radius: 999px;
+}
 .grip-cue { font-size: 14.5px; line-height: 1.55; color: #c8bcab; margin: 0 0 12px; }
 .nohang-note {
   display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: #8a7c6c;
