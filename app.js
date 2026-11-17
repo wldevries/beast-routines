@@ -391,6 +391,7 @@ class AbrahangsTimer {
     this.unitTextEl = document.getElementById('unitText');
     this.sublabelEl = document.getElementById('sublabel');
     this.pipsEl = document.getElementById('pips');
+    this.repTrackerEl = document.getElementById('repTracker');
     this.repsFeedbackCardEl = document.getElementById('repsFeedbackCard');
     this.gripCardEl = document.getElementById('gripCard');
     this.boardCardEl = document.querySelector('.board-card');
@@ -1000,6 +1001,25 @@ class AbrahangsTimer {
     }).join('');
   }
 
+  renderRepTracker() {
+    const { status, phase, isLongRest } = this.state;
+    const P = this.protocol();
+    const show = P.repsPerSet > 1 && status !== 'idle' && status !== 'done' && phase !== 'prepare' && !(phase === 'rest' && isLongRest);
+    this.repTrackerEl.hidden = !show;
+    if (!show) { this.repTrackerEl.innerHTML = ''; return; }
+    const accent = this.getAccent();
+    const { completed, active } = this.repProgress();
+    const left = P.repsPerSet - completed;
+    const dots = Array.from({ length: P.repsPerSet }, (_, r) => {
+      if (r < completed) return `<span class="rep-pip rep-pip-done"></span>`;
+      if (r === active) return `<span class="rep-pip rep-pip-active" style="background:${accent}; box-shadow:0 0 14px ${accent};"></span>`;
+      return `<span class="rep-pip"></span>`;
+    }).join('');
+    this.repTrackerEl.innerHTML = `
+      <div class="rep-pips">${dots}</div>
+      <div class="rep-count"><strong>${completed}</strong> done &middot; <strong>${left}</strong> left</div>`;
+  }
+
   renderRepsFeedbackCard() {
     const { status, phase, setIndex, isLongRest } = this.state;
     const P = this.protocol();
@@ -1263,6 +1283,8 @@ class AbrahangsTimer {
     this.primaryBtn.textContent = status === 'running' ? 'Pause' : status === 'paused' ? 'Resume' : status === 'done' ? 'Restart' : 'Start';
     this.primaryBtn.style.background = accent;
     this.primaryBtn.style.boxShadow = `0 8px 24px ${accent}3a`;
+    this.skipBtn.hidden = status === 'done';
+    this.resetBtn.hidden = status === 'done';
     this.ringGlow.style.background = `radial-gradient(circle, ${accent}44 0%, transparent 68%)`;
     this.phaseLabelEl.style.color = accent;
 
@@ -1279,6 +1301,7 @@ class AbrahangsTimer {
     this.editBtn.textContent = editHolds ? 'Done' : 'Edit holds';
     this.boardMapTitleEl.textContent = `Board map · ${this.board().label}`;
 
+    this.renderRepTracker();
     this.renderPips();
     this.renderRepsFeedbackCard();
     this.renderGripCard();

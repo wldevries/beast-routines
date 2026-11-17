@@ -193,6 +193,19 @@ button { font-family: 'Archivo', sans-serif; cursor: pointer; }
 .unit-text { font-size: 13px; font-weight: 700; letter-spacing: .28em; text-transform: uppercase; color: #a99a87; min-height: 14px; }
 .sublabel { font-size: 12px; color: #8a7c6c; margin-top: 5px; }
 
+.rep-tracker { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: -10px; }
+.rep-tracker[hidden] { display: none; }
+.rep-pips { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; max-width: 340px; }
+.rep-pip {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(255,255,255,0.08); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.14);
+  transition: background .25s ease, box-shadow .25s ease, transform .25s ease;
+}
+.rep-pip-done { background: rgba(226,163,62,0.6); box-shadow: none; }
+.rep-pip-active { transform: scale(1.2); }
+.rep-count { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #a99a87; }
+.rep-count strong { color: #f6efe4; font-size: 16px; }
+
 .pips { display: flex; align-items: center; gap: 9px; }
 .pip { height: 7px; padding: 0; border: none; border-radius: 99px; transition: width .3s ease, background .3s ease; }
 .pip-multi { display: flex; align-items: center; gap: 2px; background: transparent; }
