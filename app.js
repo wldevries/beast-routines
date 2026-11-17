@@ -382,7 +382,7 @@ class AbrahangsTimer {
     this.soundBtn = document.getElementById('soundBtn');
     this.primaryBtn = document.getElementById('primaryBtn');
     this.skipBtn = document.getElementById('skipBtn');
-    this.resetBtn = document.getElementById('resetBtn');
+    this.restartSetBtn = document.getElementById('restartSetBtn');
     this.editBtn = document.getElementById('editBtn');
     this.ringGlow = document.getElementById('ringGlow');
     this.ring = document.getElementById('ring');
@@ -406,7 +406,7 @@ class AbrahangsTimer {
     this.soundBtn.addEventListener('click', () => this.toggleSound());
     this.primaryBtn.addEventListener('click', () => this.primary());
     this.skipBtn.addEventListener('click', () => this.skip());
-    this.resetBtn.addEventListener('click', () => this.reset());
+    this.restartSetBtn.addEventListener('click', () => this.restartSet());
     this.editBtn.addEventListener('click', () => this.toggleEdit());
 
     this.backBtn.addEventListener('click', () => this.goHome());
@@ -472,7 +472,7 @@ class AbrahangsTimer {
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Space') { e.preventDefault(); this.primary(); }
       else if (e.key === 'ArrowRight') { this.skip(); }
-      else if (e.key && e.key.toLowerCase() === 'r') { this.reset(); }
+      else if (e.key && e.key.toLowerCase() === 'r') { this.restartSet(); }
     });
   }
 
@@ -677,7 +677,7 @@ class AbrahangsTimer {
     const P = this.protocol();
     const ph = this.state.phase;
     const { setIndex, repIndex } = this.state;
-    if (ph === 'prepare') { this.enterHang(0, 0); this.goBeep(); }
+    if (ph === 'prepare') { this.enterHang(setIndex, 0); this.goBeep(); }
     else if (ph === 'hang') {
       const lastRepInSet = repIndex >= P.repsPerSet - 1;
       const lastSet = setIndex >= P.sets.length - 1;
@@ -715,10 +715,20 @@ class AbrahangsTimer {
   }
   pause() { this.stop(); this.setState({ status: 'paused' }); }
   resume() { this.ensureAudio(); this.setState({ status: 'running' }); this.run(); }
-  reset() {
-    this.stop();
+  // Restart set is only meaningful while inside a set: hanging or resting between reps.
+  canRestartSet() {
+    const { status, phase, isLongRest } = this.state;
+    if (status !== 'running' && status !== 'paused') return false;
+    return phase === 'hang' || (phase === 'rest' && !isLongRest);
+  }
+  restartSet() {
+    if (!this.canRestartSet()) return;
+    this.ensureAudio();
     const P = this.protocol();
-    this.setState({ status: 'idle', phase: 'prepare', setIndex: 0, repIndex: 0, isLongRest: false, remaining: P.prepareSeconds, phaseTotal: P.prepareSeconds });
+    this.lastTs = performance.now();
+    // Re-enter the Get Ready countdown for the current set; advance() then starts its rep 1.
+    this.setState({ status: 'running', phase: 'prepare', repIndex: 0, isLongRest: false, remaining: P.prepareSeconds, phaseTotal: P.prepareSeconds });
+    this.run();
   }
   skip() {
     if (this.state.status === 'idle' || this.state.status === 'done') return;
@@ -1284,14 +1294,15 @@ class AbrahangsTimer {
     this.primaryBtn.style.background = accent;
     this.primaryBtn.style.boxShadow = `0 8px 24px ${accent}3a`;
     this.skipBtn.hidden = status === 'done';
-    this.resetBtn.hidden = status === 'done';
+    this.restartSetBtn.hidden = status === 'idle' || status === 'done';
+    this.restartSetBtn.disabled = !this.canRestartSet();
     this.ringGlow.style.background = `radial-gradient(circle, ${accent}44 0%, transparent 68%)`;
     this.phaseLabelEl.style.color = accent;
 
     let phaseLabel, sublabel;
     if (status === 'idle') { phaseLabel = 'Ready'; sublabel = 'Press start'; }
     else if (status === 'done') { phaseLabel = 'Complete'; sublabel = 'Nice work'; }
-    else if (phase === 'prepare') { phaseLabel = 'Get Ready'; sublabel = P.labels.prepare; }
+    else if (phase === 'prepare') { phaseLabel = 'Get Ready'; sublabel = this.state.setIndex > 0 ? `Set ${this.state.setIndex + 1} restarting` : P.labels.prepare; }
     else if (phase === 'hang') { phaseLabel = 'Hang'; sublabel = P.labels.hang; }
     else { phaseLabel = 'Rest'; sublabel = isLongRest ? P.labels.restLong : P.labels.restShort; }
     this.phaseLabelEl.textContent = phaseLabel;
